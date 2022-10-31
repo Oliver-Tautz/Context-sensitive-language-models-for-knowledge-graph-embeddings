@@ -18,6 +18,15 @@ from os.path import exists
 from pathlib import Path
 import pandas as pd
 
+import os
+
+
+
+# disable GPU if wanted
+if NO_GPU:
+    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+
+
 subprocess.run(['wget', '-qnc', '--no-check-certificate',
                 "https://docs.google.com/uc?export=download&id=1pBnn8bjI2VkVvBR33DnvpeyocfDhMCFA", '-O',
                 'fb15k-237_nt.zip'])

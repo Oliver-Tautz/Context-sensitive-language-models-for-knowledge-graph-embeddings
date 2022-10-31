@@ -253,7 +253,7 @@ def evaluate_link_pred(score_f, graph, entity_vec_mapping, entities, vector_size
 
                     ix_to_score.append(j)
             # print(pd.DataFrame(triples_to_test[ix_to_score]))
-            if DEBUG:
+            if DEBUG > 1:
                 pd.DataFrame(triples_to_test[ix_to_score], columns=['s', 'p', 'o']).to_feather(
                     f'debug/not_found_{i}.feather')
                 pd.DataFrame(lookup.keys(), columns=['s', 'o']).to_feather(f'debug/keys_{i}.feather')
