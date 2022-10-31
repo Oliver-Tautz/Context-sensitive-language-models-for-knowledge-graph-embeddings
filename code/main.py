@@ -126,12 +126,12 @@ print(evalu)
 
 
 ranks, stats = evaluate_link_pred(lambda x: tf.keras.activations.sigmoid(model.predict(x)), g_val,
-                            lambda x: map_keyed_vectors(word_vectors, x), entities, max_triples=None)
+                            lambda x: map_keyed_vectors(word_vectors, x), entities, max_triples=SMALL_DATASET_FOR_EVAL)
 pd.DataFrame(stats).to_csv('val_scores.csv')
 
 
 ranks, stats = evaluate_link_pred(lambda x: tf.keras.activations.sigmoid(model.predict(x)), g_test,
-                            lambda x: map_keyed_vectors(word_vectors, x), entities, max_triples=None)
+                            lambda x: map_keyed_vectors(word_vectors, x), entities, max_triples=SMALL_DATASET_FOR_EVAL)
 pd.DataFrame(stats).to_csv('test_scores.csv')
 
 
