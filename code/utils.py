@@ -1,3 +1,4 @@
+import numpy
 import numpy as np
 
 from rdflib import Graph, URIRef
@@ -195,10 +196,13 @@ import timeit
 
 # %%
 def map_keyed_vectors(word_vectors, iterable):
-    return (word_vectors.get_vector(x) for x in iterable)
+
+    return numpy.array(tuple(word_vectors.get_vector(x) for x in iterable))
+
 
 
 def evaluate_link_pred(score_f, graph, entity_vec_mapping, entities, vector_size=100, max_triples=100, plot=False):
+
     print('start_evaluating ...')
 
     entities = np.array(entities)
@@ -249,13 +253,14 @@ def evaluate_link_pred(score_f, graph, entity_vec_mapping, entities, vector_size
 
                     ix_to_score.append(j)
             # print(pd.DataFrame(triples_to_test[ix_to_score]))
-            pd.DataFrame(triples_to_test[ix_to_score], columns=['s', 'p', 'o']).to_feather(
-                f'debug/not_found_{i}.feather')
-            pd.DataFrame(lookup.keys(), columns=['s', 'o']).to_feather(f'debug/keys_{i}.feather')
-            pd.DataFrame([[len(lookup_scores), len(triples_to_test), len(lookup_scores) / len(triples_to_test)]],
-                         columns=['n_looked_up', 'n', '%']).to_feather(f'debug/stats_{i}.feather')
+            if DEBUG:
+                pd.DataFrame(triples_to_test[ix_to_score], columns=['s', 'p', 'o']).to_feather(
+                    f'debug/not_found_{i}.feather')
+                pd.DataFrame(lookup.keys(), columns=['s', 'o']).to_feather(f'debug/keys_{i}.feather')
+                pd.DataFrame([[len(lookup_scores), len(triples_to_test), len(lookup_scores) / len(triples_to_test)]],
+                             columns=['n_looked_up', 'n', '%']).to_feather(f'debug/stats_{i}.feather')
 
-            print(f"looked up {len(lookup_scores)} of {len(triples_to_test)} triples")
+                print(f"looked up {len(lookup_scores)} of {len(triples_to_test)} triples")
             # score unscored triples
             triples_to_score = triples_to_test[ix_to_score]
             if len(triples_to_score) > 0:
@@ -338,25 +343,6 @@ def evaluate_link_pred(score_f, graph, entity_vec_mapping, entities, vector_size
     return ranks, stats, embeddings_scores
 
 
-# %% jupyter={"outputs_hidden": true} tags=[]
-# ranks, stats, table = evaluate_link_pred(lambda x : tf.keras.activations.sigmoid(model.predict(x)), testgraph, lambda x : word_vectors[x], testentities, max_triples=None)
-# z, stats
-
-# %%
-# scores = evaluate_link_pred(lambda x : tf.keras.activations.sigmoid(model.predict(x)), testgraph, lambda x : map_keyed_vectors(word_vectors,x), entities, max_triples=None)
-# z, stats
-
-# %%
-
-
-# z, stats
-
-# %%
-def square(x):
-    x ** 2
-
-
-# %%
 
 import sklearn.manifold
 import pandas as pd

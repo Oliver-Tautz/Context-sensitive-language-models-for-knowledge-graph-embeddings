@@ -125,11 +125,15 @@ print(evalu)
 # %%
 
 
-scores = evaluate_link_pred(lambda x: tf.keras.activations.sigmoid(model.predict(x)), g_val,
+ranks, stats = evaluate_link_pred(lambda x: tf.keras.activations.sigmoid(model.predict(x)), g_val,
                             lambda x: map_keyed_vectors(word_vectors, x), entities, max_triples=None)
+pd.DataFrame(stats).to_csv('val_scores.csv')
 
-scores = evaluate_link_pred(lambda x: tf.keras.activations.sigmoid(model.predict(x)), g_test,
+
+ranks, stats = evaluate_link_pred(lambda x: tf.keras.activations.sigmoid(model.predict(x)), g_test,
                             lambda x: map_keyed_vectors(word_vectors, x), entities, max_triples=None)
+pd.DataFrame(stats).to_csv('test_scores.csv')
+
 
 reduction_model = sklearn.manifold.TSNE(learning_rate='auto', init='pca').fit_transform
 
