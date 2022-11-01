@@ -1,6 +1,6 @@
-
+import multiprocessing
 JRDF2VEC_TRAINING = False
-JRDF2VEC_THREADS = 10
+JRDF2VEC_THREADS = multiprocessing.cpu_count()-2
 
 VECTOR_SIZE=100
 TEST_CLASSIC_ML = False
