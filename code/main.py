@@ -136,25 +136,29 @@ print(evalu)
 
 ranks, stats = evaluate_link_pred(lambda x: tf.keras.activations.sigmoid(model.predict(x)), g_val,
                             lambda x: map_keyed_vectors(word_vectors, x), entities, max_triples=SMALL_DATASET_FOR_EVAL)
-pd.DataFrame(stats).to_csv('val_scores.csv')
+print(stats)
+
+pd.DataFrame(stats,index=[0]).to_csv('val_scores.csv')
 
 
 ranks, stats = evaluate_link_pred(lambda x: tf.keras.activations.sigmoid(model.predict(x)), g_test,
                             lambda x: map_keyed_vectors(word_vectors, x), entities, max_triples=SMALL_DATASET_FOR_EVAL)
-pd.DataFrame(stats).to_csv('test_scores.csv')
+pd.DataFrame(stats,index=[0]).to_csv('test_scores.csv')
 
 
 reduction_model = sklearn.manifold.TSNE(learning_rate='auto', init='pca').fit_transform
 
 # %%
 X, Y = get_1_1_dataset(g_train, entities, lambda x: word_vectors[x], corrupt='both')
+fig = plot_embeddings(X, Y)
+os.makedirs('plots')
 
-plot_embeddings(X, Y)
-
+fig.write_image("plots/1_1_dataset_both.pdf")
 # %%
 X, Y = get_1_1_dataset(g_train, entities, lambda x: word_vectors[x], corrupt='subject')
 plot_embeddings(X, Y)
-
+fig.write_image("plots/1_1_dataset_subject.pdf")
 # %%
 X, Y = get_1_1_dataset(g_train, entities, lambda x: word_vectors[x], corrupt='object')
 plot_embeddings(X, Y)
+fig.write_image("plots/1_1_dataset_object.pdf")

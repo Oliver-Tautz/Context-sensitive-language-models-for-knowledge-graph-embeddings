@@ -340,7 +340,7 @@ def evaluate_link_pred(score_f, graph, entity_vec_mapping, entities, vector_size
     stats['HITS3'] = np.count_nonzero(ranks <= 3)
     stats['HITS10'] = np.count_nonzero(ranks <= 10)
 
-    return ranks, stats, embeddings_scores
+    return ranks, stats
 
 
 
