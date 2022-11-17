@@ -1,13 +1,2 @@
-import multiprocessing
-JRDF2VEC_TRAINING = False
-JRDF2VEC_THREADS = multiprocessing.cpu_count()-2
-
 VECTOR_SIZE=100
-TEST_CLASSIC_ML = False
 CLASSIFIER_EPOCHS = 50
-
-DEBUG = 1
-SMALL_DATASET_FOR_EVAL = 10#None
-NO_GPU=True
-
-
