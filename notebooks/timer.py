@@ -22,8 +22,9 @@ import pickle
 
 # %%
 def pickle_save(obj,filename):
-    file = open('filename','wb') 
+    file = open(filename,'wb') 
     pickle.dump(obj,file)
+    file.close()
   
 
 
