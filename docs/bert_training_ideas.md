@@ -16,7 +16,7 @@ Mostly from T5 https://arxiv.org/abs/1910.10683
 
 ## Unsupervised denoising
 
-![]('T5_unsupervised_objectives.png')
+![](T5_unsupervised_objectives.png)
 
 
 
