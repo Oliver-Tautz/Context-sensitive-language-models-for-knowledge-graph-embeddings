@@ -5,6 +5,7 @@ from tqdm import tqdm
 from utils import  PerfTimer
 from sklearn.utils.extmath import cartesian
 import torch
+from settings import VECTOR_SIZE
 
 
 def compute_rank(scores, ix, mask=None):
@@ -64,7 +65,7 @@ def get_tailmask(x, no_entities):
     return torch.arange(x, no_entities ** 2, no_entities)
 
 
-def eval_ranks(model, graph,word_vec_mapping, filtered=True, batchsize=None, vecsize=100, force_cpu=False, bit16tensors=False,
+def eval_ranks(model, graph,word_vec_mapping, filtered=True, batchsize=None, vecsize=VECTOR_SIZE, force_cpu=True, bit16tensors=False,
                bench=False):
     # get data from graph
 
@@ -173,7 +174,7 @@ def eval_ranks(model, graph,word_vec_mapping, filtered=True, batchsize=None, vec
 
             predicate_embedding = predicate_vecs[pred_ix]
             # use expand as memory of rows is shared. This may cause bugs ... investigate!
-            predicate_embedding = predicate_embedding.reshape(1, 100).expand(len(to_score_embeddings), 100)
+            predicate_embedding = predicate_embedding.reshape(1, vecsize).expand(len(to_score_embeddings), vecsize)
 
             perfTimer.track('collect_embeddings')
             to_score_embeddings[:, vecsize:2 * vecsize] = predicate_embedding
