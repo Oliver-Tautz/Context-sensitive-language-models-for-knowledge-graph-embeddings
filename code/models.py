@@ -1,10 +1,12 @@
 import torchmetrics
 import torch
 from torch import nn
+from settings import VECTOR_SIZE
+
 
 
 class ClassifierSimple(torch.nn.Module):
-    def __init__(self, input_dim=300, hidden_size=64):
+    def __init__(self, input_dim=3*VECTOR_SIZE, hidden_size=64):
         super(ClassifierSimple, self).__init__()
 
         self.layers = nn.Sequential(
@@ -31,3 +33,6 @@ class ClassifierSimple(torch.nn.Module):
         x = torch.tensor(x)
         x.to(self.device)
         return self.output_activation(self.layers(x)).detach().cpu().numpy()
+
+
+

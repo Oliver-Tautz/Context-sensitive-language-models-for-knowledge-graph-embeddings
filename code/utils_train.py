@@ -15,6 +15,7 @@ def get_vectors_fast(triples, entity_vec_mapping, vector_size=VECTOR_SIZE):
     X = np.array(triples)
     X = entity_vec_mapping(X.flatten()).reshape(len(triples), vector_size * 3)
 
+
     return X
 
 
@@ -88,7 +89,7 @@ def get_random_corrupted_triple_embedded(triple, entities, corrupt='object', vec
 
 def get_1_1_dataset_embedded(graph, entities, corrupt='random', vector_size=VECTOR_SIZE):
     """
-    graph: numpy array of shape (samples,3*
+    graph: numpy array of shape (samples,3*vecsize)
     """
 
     if len(graph.shape) == 1:
@@ -154,25 +155,26 @@ def fit_1_1(model, graph, word_vec_mapping, batch_size, entities, metrics=None, 
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    # move metrics to device
-    metrics = {name: metric.to(device) for (name, metric) in metrics.items()}
+    with torch.no_grad():
+        # move metrics to device
+        metrics = {name: metric.to(device) for (name, metric) in metrics.items()}
 
-    # move model to device
+        # move model to device
 
-    model = model.to(device)
+        model = model.to(device)
 
-    if not optimizer:
-        optimizer = torch.optim.Adam(model.parameters())
+        if not optimizer:
+            optimizer = torch.optim.Adam(model.parameters())
 
-    history = defaultdict(list)
-    loss_metric = torchmetrics.aggregation.MeanMetric().to(device)
+        history = defaultdict(list)
+        loss_metric = torchmetrics.aggregation.MeanMetric().to(device)
 
-    dataset = Dataset11(graph, word_vec_mapping, entities, 'random')
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+        dataset = Dataset11(graph, word_vec_mapping, entities, 'random')
+        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
-    if graph_eval:
-        dataset_eval = Dataset11(graph_eval, word_vec_mapping, entities, 'random')
-        dataloader_eval = DataLoader(dataset_eval, batch_size=batch_size, shuffle=False)
+        if graph_eval:
+            dataset_eval = Dataset11(graph_eval, word_vec_mapping, entities, 'random')
+            dataloader_eval = DataLoader(dataset_eval, batch_size=batch_size, shuffle=False)
 
     for ep in trange(epochs):
         # train
@@ -207,7 +209,7 @@ def fit_1_1(model, graph, word_vec_mapping, batch_size, entities, metrics=None, 
         # eval
         if graph_eval:
             with torch.no_grad():
-                for X, Y in dataloader:
+                for X, Y in dataloader_eval:
                     model.eval()
 
                     # shape is (bs,2,3*VECTORSIZE) because of dataset implementation
@@ -233,3 +235,13 @@ def fit_1_1(model, graph, word_vec_mapping, batch_size, entities, metrics=None, 
                 # tensor - > float conversion
     history = {k: [x.item() for x in v] for (k, v) in history.items()}
     return model, history
+
+
+def get_bert_embeddings(entities, bert_model, tokenizer):
+    entities = [tokenizer.encode(x) for x in np.array(entities)]
+    embeddings = bert_model(torch.tensor(entities))
+    embeddings = embeddings['last_hidden_state'][:, 1]
+
+    # return numpy because of 'backwards_compatibility'
+    # maybe make this optional
+    return embeddings.detach().cpu().numpy()
