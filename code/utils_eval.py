@@ -236,9 +236,10 @@ def mean_reciprocal_rank(head_ranks,tail_ranks):
 def hitsAt(head_ranks,tail_ranks,at):
     return ((head_ranks <=at).sum() + (tail_ranks<=at).sum())/(len(head_ranks)+len(tail_ranks))
 
-def eval_model(model,graph,word_vec_mapping):
+def eval_model(model,graph,word_vec_mapping,return_tensors=False):
     
     with torch.no_grad():
+        model.eval()
         head_ranks, tail_ranks, pt = eval_ranks(model, graph, word_vec_mapping, force_cpu=True,
                                                 filtered=True, bit16tensors=False)
         # collect garbage because of large arrays
@@ -263,6 +264,9 @@ def eval_model(model,graph,word_vec_mapping):
         stats['Hits@1_tail']  = (tail_ranks <= 1).sum() / len(tail_ranks)
         stats['Hits@3_tail']  = (tail_ranks <= 3).sum() / len(tail_ranks)
         stats['Hits@10_tail'] =( tail_ranks <= 10).sum() / len(tail_ranks)
+
+        if not return_tensors:
+            stats = {k:[v.item()] for k,v in stats.items()}
 
         
 
