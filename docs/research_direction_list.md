@@ -47,6 +47,22 @@ Train on link prediction with 11 or 1N sentence classifier head.
 
 supervised task with labeled dataset possible, but less interesting.
 
+## Embedding Option
+
+Multiple options to get embeddings from entities:
+  * token embedding of one-entity-sentence (most easy to apply, no graph needed)
+  * sentence embedding of one-entity-sentence
+  * token embedding of triple 
+  * token embedding of random walk containing entity
+
+Also option for obtaining embedding (see BERT paper)
+  ![image](https://user-images.githubusercontent.com/53008918/204265636-8d1d67ea-d976-48da-b9e8-8345748d61b5.png)
+
+
 ## Pretrained weights
 
 Use pretrained weights of NLP transformer and see if it improves results? Could be bad because of tokenizer not being word level ...
+
+## Finetuning ... 
+
+Currently I thought of using bert as embeddings model only, but finetuning is possible.
