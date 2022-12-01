@@ -16,6 +16,10 @@ Small models are faster to train, but relatvion of hidden_size and number of lay
 
 ## Embedding Training Objective
 
+
+### Triples vs paths of differing length and differing algorithms
+
+
 Lots of objectives are available:
 
 ### Denoising Objectives
