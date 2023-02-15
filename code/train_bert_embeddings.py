@@ -19,8 +19,15 @@ from torch.utils.data import DataLoader
 from utils_data import DataseSimpleTriple
 import pandas as pd
 
+VERBOSE=1
+
+def verbprint(str):
+    if VERBOSE:
+        print(str)
 
 # Parse rdf
+
+verbprint("Loading Dataset")
 
 g_train = Graph()
 g_val = Graph()
@@ -33,7 +40,7 @@ dataset_most_simple = [' '.join(x) for x in g_train]
 dataset_most_simple_eval = [' '.join(x) for x in g_val]
 
 
-
+verbprint("Init Model.")
 # Init tokenizer and config from tinybert
 tz = BertTokenizer.from_pretrained("bert-base-cased")
 special_tokens_map = tz.special_tokens_map_extended
@@ -60,6 +67,9 @@ del tiny_pretrained
 
 #
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+
+print(f'cuda available: {torch.cuda.is_available()}')
 tiny_encoder  = BertForTokenClassification(encoder_config)
 tiny_encoder  = tiny_encoder.to(device)
 lossF = torch.nn.CrossEntropyLoss()
@@ -71,6 +81,9 @@ loss_metric = torchmetrics.aggregation.MeanMetric().to(device)
 batchloss_metric = torchmetrics.aggregation.CatMetric().to(device)
 batchloss_metric_eval = torchmetrics.aggregation.CatMetric().to(device)
 history = defaultdict(list)
+
+
+verbprint("Starting training")
 
 for epochs in trange(BERT_EPOCHS):
     for inputs, batch_mask, batch_labels in tqdm(dl):
@@ -133,16 +146,16 @@ for epochs in trange(BERT_EPOCHS):
 
 pd.DataFrame(history).to_csv('bert_loss_eval.csv')
 pl = pd.DataFrame(history).plot()
-pl.savefig('loss_eval_loss.pdf')
+pl.figure.savefig('loss_eval_loss.pdf')
 
 pd.DataFrame(batchloss_metric.compute().detach().cpu()).to_csv('bert_batchloss.csv')
 pl = pd.DataFrame(batchloss_metric.compute().detach().cpu()).plot()
-pl.savefig('batchloss.pdf')
+pl.figure.savefig('batchloss.pdf')
 
 
 pd.DataFrame(batchloss_metric_eval.compute().detach().cpu()).to_csv('bert_batchloss_eval.csv')
 pl = pd.DataFrame(batchloss_metric_eval.compute().detach().cpu()).plot()
-pl.savefig('batchloss_eval.pdf')
+pl.figuresavefig('batchloss_eval.pdf')
 
 
 tiny_encoder.save_pretrained("tiny_bert_from_scratch_simple_eval")
