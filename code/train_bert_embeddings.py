@@ -155,7 +155,7 @@ pl.figure.savefig('batchloss.pdf')
 
 pd.DataFrame(batchloss_metric_eval.compute().detach().cpu()).to_csv('bert_batchloss_eval.csv')
 pl = pd.DataFrame(batchloss_metric_eval.compute().detach().cpu()).plot()
-pl.figuresavefig('batchloss_eval.pdf')
+pl.figure.savefig('batchloss_eval.pdf')
 
 
 tiny_encoder.save_pretrained("tiny_bert_from_scratch_simple_eval")
