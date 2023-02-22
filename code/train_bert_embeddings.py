@@ -82,6 +82,8 @@ batchloss_metric = torchmetrics.aggregation.CatMetric().to(device)
 batchloss_metric_eval = torchmetrics.aggregation.CatMetric().to(device)
 history = defaultdict(list)
 
+verbprint(f"cuda_model: {next(tiny_encoder.parameters()).is_cuda}")
+
 
 verbprint("Starting training")
 
