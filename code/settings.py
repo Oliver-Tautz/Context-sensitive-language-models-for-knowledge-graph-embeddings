@@ -1,4 +1,6 @@
 from pathlib import Path
+
+
 VECTOR_SIZE=128
 CLASSIFIER_EPOCHS = 100
 CLASSIFIER_DROPOUT=0.3
@@ -8,3 +10,7 @@ BERT_EPOCHS =100
 BERT_SIMPLE_NAME = Path("tiny_bert_from_scratch_simple")
 BERT_SIMPLE_MAXLEN = 10
 BERT_BATCHSIZE=5000
+
+
+
+DEBUG=False
