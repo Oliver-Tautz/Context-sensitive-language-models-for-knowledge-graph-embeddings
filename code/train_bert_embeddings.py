@@ -6,6 +6,8 @@ from tokenizers.pre_tokenizers import WhitespaceSplit
 from tokenizers.trainers import WordLevelTrainer
 from tokenizers.processors import BertProcessing
 from transformers import BertConfig, BertModel, AutoModel
+from utils_graph import get_entities
+
 import copy
 from collections import defaultdict
 import torchmetrics
@@ -33,6 +35,11 @@ g_train = Graph()
 g_val = Graph()
 g_train = g_train.parse('FB15k-237/train.nt', format='nt')
 g_val   = g_val.parse('FB15k-237/valid.nt', format='nt')
+
+
+entities = get_entities([g_train])
+
+print(entities[0:10])
 
 
 # Join triples together

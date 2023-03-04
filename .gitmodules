@@ -1,0 +1,3 @@
+[submodule "rdf2vec_link_pred"]
+	path = rdf2vec_link_pred
+	url = git@github.com:moritzblum/rdf2vec_link_pred.git
