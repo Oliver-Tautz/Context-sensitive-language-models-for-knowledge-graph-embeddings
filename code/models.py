@@ -60,7 +60,7 @@ class SimpleBertTokenClassifier(torch.nn.Module):
 
         # Embedding size
         pretrained_config.hidden_size = VECTOR_SIZE
-        pretrained_config.max_position_embeddings = BERT_SIMPLE_MAXLEN
+        pretrained_config.max_position_embeddings = BERT_MAXLEN
 
         del pretrained_model
 
@@ -72,7 +72,7 @@ class SimpleBertTokenClassifier(torch.nn.Module):
     def forward(self,X):
         return self.model.forward(X)
 
-    def train(self, dataset,dataset_eval = None, name=BERT_SIMPLE_NAME, lossF=torch.nn.CrossEntropyLoss(), batchsize=5000, optimizer=None, epochs=BERT_EPOCHS):
+    def train(self, dataset,dataset_eval = None, name=BERT_NAME, lossF=torch.nn.CrossEntropyLoss(), batchsize=5000, optimizer=None, epochs=BERT_EPOCHS):
 
         if not optimizer:
             optimizer = torch.optim.Adam(self.model.parameters())
