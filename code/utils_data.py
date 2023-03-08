@@ -58,20 +58,22 @@ def mask_list(l, mask_token, vocab_size, special_token_ids):
     return torch.tensor([random_mask(y, mask_token, vocab_size) if y not in special_token_ids else (y, 0) for y in l])
 
 class DataseSimpleTriple(torch.utils.data.Dataset):
-    def __init__(self, triples, special_tokens_map, max_length=128):
+    def __init__(self, triples, special_tokens_map,tokenizer=None, max_length=128):
 
+        if not tokenizer:
+            word_level_tokenizer = Tokenizer(WordLevel(unk_token=special_tokens_map['unk_token']))
+            word_level_trainer = WordLevelTrainer(special_tokens=list(special_tokens_map.values()))
+            # Pretokenizer. This is important and could lead to better/worse results!
+            word_level_tokenizer.pre_tokenizer = WhitespaceSplit()
 
-        word_level_tokenizer = Tokenizer(WordLevel(unk_token=special_tokens_map['unk_token']))
-        word_level_trainer = WordLevelTrainer(special_tokens=list(special_tokens_map.values()))
-        # Pretokenizer. This is important and could lead to better/worse results!
-        word_level_tokenizer.pre_tokenizer = WhitespaceSplit()
+            word_level_tokenizer.train_from_iterator(triples, word_level_trainer)
 
-        word_level_tokenizer.train_from_iterator(triples, word_level_trainer)
-
-        word_level_tokenizer.post_processor = BertProcessing(
-            ("[SEP]", word_level_tokenizer.token_to_id("[SEP]")),
-            ('[CLS]', word_level_tokenizer.token_to_id('[CLS]')),
-        )
+            word_level_tokenizer.post_processor = BertProcessing(
+                ("[SEP]", word_level_tokenizer.token_to_id("[SEP]")),
+                ('[CLS]', word_level_tokenizer.token_to_id('[CLS]')),
+            )
+        else:
+            word_level_tokenizer = tokenizer
 
         self.mask_token_id = word_level_tokenizer.token_to_id(special_tokens_map['mask_token'])
         word_level_tokenizer.enable_truncation(max_length=max_length)

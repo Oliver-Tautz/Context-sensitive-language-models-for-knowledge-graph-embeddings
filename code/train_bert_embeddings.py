@@ -48,16 +48,23 @@ if DEBUG:
     BERT_EPOCHS = 10
     BERT_BATCHSIZE=5000
 
+
+verbprint(f"example data: {dataset_most_simple[0:10]}")
 verbprint("Init Model.")
 # Init tokenizer and config from tinybert
 tz = BertTokenizer.from_pretrained("bert-base-cased")
 special_tokens_map = tz.special_tokens_map_extended
 
+verbprint(f"special tokens: {special_tokens_map}")
 
 dataset_simple = DataseSimpleTriple(dataset_most_simple,special_tokens_map)
-dataset_simple_eval = DataseSimpleTriple(dataset_most_simple_eval,special_tokens_map)
-
 tz = dataset_simple.get_tokenizer()
+dataset_simple_eval = DataseSimpleTriple(dataset_most_simple_eval,special_tokens_map,tokenizer=tz)
+
+
+verbprint(f"example data processed: {dataset_simple[0]}")
+
+
 
 
 
@@ -131,11 +138,12 @@ for epochs in trange(BERT_EPOCHS):
         loss_metric(loss.detach())
         batchloss_metric(loss.detach())
 
-    history['loss'].append(loss_metric.compute().item())
+    history['loss'].append(loss_metric.compute().detach().item())
     loss_metric.reset()
     with torch.no_grad():
         tiny_encoder.eval()
         for inputs, batch_mask, batch_labels in dl_eval:
+            optimizer.zero_grad()
             batch_id = inputs[:, :, 0]
 
             out = tiny_encoder.forward(batch_id.to(device), batch_mask.to(device))
@@ -157,7 +165,7 @@ for epochs in trange(BERT_EPOCHS):
             loss_metric(loss.detach())
             batchloss_metric_eval(loss.detach())
 
-        history['loss_eval'].append(loss_metric.compute().item())
+        history['loss_eval'].append(loss_metric.compute().detach().item())
         loss_metric.reset()
 
 
@@ -173,7 +181,7 @@ pl.figure.savefig('batchloss.pdf')
 
 pd.DataFrame(batchloss_metric_eval.compute().detach().cpu()).to_csv('bert_batchloss_eval.csv')
 pl = pd.DataFrame(batchloss_metric_eval.compute().detach().cpu()).plot()
-pl.figure.savefig('batchloss_eval.pdf')
+o
 
 # Save model
 tiny_encoder.save_pretrained("tiny_bert_from_scratch_simple_eval")
@@ -183,12 +191,11 @@ tz.save('tiny_bert_from_scratch_simple_tokenizer_eval.json')
 g_test = Graph()
 g_test = g_test.parse('FB15k-237/test.nt', format='nt')
 dataset_most_simple_test = [' '.join(x) for x in g_test]
-dataset_simple_test = DataseSimpleTriple(dataset_most_simple_test,special_tokens_map)
+dataset_simple_test = DataseSimpleTriple(dataset_most_simple_test,special_tokens_map,tokenizer=tz)
 dl_test =  DataLoader(dataset_simple_test, batch_size=BERT_BATCHSIZE, shuffle=False, pin_memory=True)
 
 if DEBUG:
     dataset_most_simple_test = dataset_most_simple_test[0:1000]
-
 
 with torch.no_grad():
     tiny_encoder.eval()
