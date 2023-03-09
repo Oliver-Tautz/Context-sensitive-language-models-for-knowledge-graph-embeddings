@@ -81,8 +81,8 @@ def main(args):
     if SETTING_DEBUG:
         dataset_most_simple = dataset_most_simple[0:10000]
         dataset_most_simple_eval = dataset_most_simple_eval[0:1000]
-        BERT_EPOCHS = 3
-        BERT_BATCHSIZE=5000
+        SETTINGS_BERT_EPOCHS = 3
+        SETTINGS_BERT_BATCHSIZE=5000
 
 
     verbprint(f"example data: {dataset_most_simple[0:10]}")
@@ -127,8 +127,8 @@ def main(args):
 
     lossF = torch.nn.CrossEntropyLoss()
 
-    dl = DataLoader(dataset_simple,batch_size=BERT_BATCHSIZE,shuffle=True,pin_memory=True)
-    dl_eval =  DataLoader(dataset_simple_eval, batch_size=BERT_BATCHSIZE, shuffle=False, pin_memory=True)
+    dl = DataLoader(dataset_simple,batch_size=SETTINGS_BERT_BATCHSIZE,shuffle=True,pin_memory=True)
+    dl_eval =  DataLoader(dataset_simple_eval, batch_size=SETTINGS_BERT_BATCHSIZE, shuffle=False, pin_memory=True)
 
     optimizer = torch.optim.Adam(tiny_encoder.parameters())
 
@@ -142,7 +142,7 @@ def main(args):
 
     verbprint("Starting training")
 
-    for epochs in trange(BERT_EPOCHS):
+    for epochs in trange(SETTINGS_BERT_EPOCHS):
         for inputs, batch_mask, batch_labels in dl:
             tiny_encoder.train()
             optimizer.zero_grad()
@@ -227,7 +227,7 @@ def main(args):
     g_test = g_test.parse('FB15k-237/test.nt', format='nt')
     dataset_most_simple_test = [' '.join(x) for x in g_test]
     dataset_simple_test = DataseSimpleTriple(dataset_most_simple_test,special_tokens_map,tokenizer=tz)
-    dl_test =  DataLoader(dataset_simple_test, batch_size=BERT_BATCHSIZE, shuffle=False, pin_memory=True)
+    dl_test =  DataLoader(dataset_simple_test, batch_size=SETTINGS_BERT_BATCHSIZE, shuffle=False, pin_memory=True)
 
     if DEBUG:
         dataset_most_simple_test = dataset_most_simple_test[0:1000]
