@@ -19,7 +19,6 @@ import torchmetrics
 
 from tqdm import tqdm, trange
 from rdflib import Graph
-from settings import VECTOR_SIZE,BERT_MAXLEN,BERT_EPOCHS,BERT_BATCHSIZE,DEBUG
 import sys
 import torch
 from torch.utils.data import DataLoader
@@ -81,8 +80,8 @@ def main(args):
     if SETTING_DEBUG:
         dataset_most_simple = dataset_most_simple[0:10000]
         dataset_most_simple_eval = dataset_most_simple_eval[0:1000]
-        SETTINGS_BERT_EPOCHS = 3
-        SETTINGS_BERT_BATCHSIZE=5000
+        SETTING_BERT_EPOCHS = 3
+        SETTING_BERT_BATCHSIZE=5000
 
 
     verbprint(f"example data: {dataset_most_simple[0:10]}")
@@ -112,8 +111,8 @@ def main(args):
     encoder_config.is_decoder = False
     encoder_config.add_cross_attention = False
     encoder_config.num_labels=tz.get_vocab_size()
-    encoder_config.hidden_size = VECTOR_SIZE
-    encoder_config.max_position_embeddings = BERT_MAXLEN
+    encoder_config.hidden_size = SETTING_VECTOR_SIZE
+    encoder_config.max_position_embeddings = SETTING_BERT_MAXLEN
 
     del tiny_pretrained
 
@@ -127,8 +126,8 @@ def main(args):
 
     lossF = torch.nn.CrossEntropyLoss()
 
-    dl = DataLoader(dataset_simple,batch_size=SETTINGS_BERT_BATCHSIZE,shuffle=True,pin_memory=True)
-    dl_eval =  DataLoader(dataset_simple_eval, batch_size=SETTINGS_BERT_BATCHSIZE, shuffle=False, pin_memory=True)
+    dl = DataLoader(dataset_simple,batch_size=SETTING_BERT_BATCHSIZE,shuffle=True,pin_memory=True)
+    dl_eval =  DataLoader(dataset_simple_eval, batch_size=SETTING_BERT_BATCHSIZE, shuffle=False, pin_memory=True)
 
     optimizer = torch.optim.Adam(tiny_encoder.parameters())
 
@@ -142,7 +141,7 @@ def main(args):
 
     verbprint("Starting training")
 
-    for epochs in trange(SETTINGS_BERT_EPOCHS):
+    for epochs in trange(SETTING_BERT_EPOCHS):
         for inputs, batch_mask, batch_labels in dl:
             tiny_encoder.train()
             optimizer.zero_grad()
@@ -227,9 +226,9 @@ def main(args):
     g_test = g_test.parse('FB15k-237/test.nt', format='nt')
     dataset_most_simple_test = [' '.join(x) for x in g_test]
     dataset_simple_test = DataseSimpleTriple(dataset_most_simple_test,special_tokens_map,tokenizer=tz)
-    dl_test =  DataLoader(dataset_simple_test, batch_size=SETTINGS_BERT_BATCHSIZE, shuffle=False, pin_memory=True)
+    dl_test =  DataLoader(dataset_simple_test, batch_size=SETTING_BERT_BATCHSIZE, shuffle=False, pin_memory=True)
 
-    if DEBUG:
+    if SETTING_DEBUG:
         dataset_most_simple_test = dataset_most_simple_test[0:1000]
 
     with torch.no_grad():
