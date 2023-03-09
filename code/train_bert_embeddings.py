@@ -48,12 +48,13 @@ def main(args):
         SETTING_WORK_FOLDER = Path(SETTING_BERT_NAME)
 
 
-        # Prompt user for overwrite        
-        if SETTING_WORK_FOLDER.is_file():
-            inp = input('Model already present! Overwrite? [y/N]')
-            if not(inp[0] == 'y' or inp[0] == 'Y'):
-                print('User abort.')
-                exit(0)
+        # Prompt user for overwrite 
+        if not args.no_prompt:       
+            if SETTING_WORK_FOLDER.is_file() or SETTING_WORK_FOLDER.is_dir():
+                inp = input('Model already present! Overwrite? [y/N]')
+                if inp =="" or not(inp[0] == 'y' or inp[0] == 'Y'):
+                    print('User abort.')
+                    exit(0)
         # Overwrite or create workfolder
         os.makedirs(SETTING_WORK_FOLDER,exist_ok=True)
         shutil.copyfile(args.config, SETTING_WORK_FOLDER / Path(args.config).name)
@@ -275,6 +276,8 @@ if __name__ == '__main__':
 
     parser.add_argument("--debug", help="Use small datasets and model for testing. Overwrites config option",
                         action='store_true')
+    parser.add_argument("--no-prompt", help="Dont prompt user, ever! Use this for automated scripting etc. Dangerous though! Can overwrite existing files.",
+                        action='store_true')                    
     
     args=parser.parse_args()
     verbprint("passed args: " + str(args))
