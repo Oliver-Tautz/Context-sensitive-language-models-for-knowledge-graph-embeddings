@@ -48,13 +48,17 @@ def main(args):
         SETTING_DEBUG = cfg_parser.getboolean('TRAIN', 'DEBUG')
         SETTING_WORK_FOLDER = Path(SETTING_BERT_NAME)
 
-        shutil.copyfile(args.config, SETTING_WORK_FOLDER / Path(args.config).name)
-        
+
+        # Prompt user for overwrite        
         if SETTING_WORK_FOLDER.is_file():
             inp = input('Model already present! Overwrite? [y/N]')
             if not(inp[0] == 'y' or inp[0] == 'Y'):
                 print('User abort.')
                 exit(0)
+        # Overwrite or create workfolder
+        os.makedirs(SETTING_WORK_FOLDER,exist_ok=True)
+        shutil.copyfile(args.config, SETTING_WORK_FOLDER / Path(args.config).name)
+
 
     except Exception as e:
         print(f'Your config is wrong or missing parameters :(\n Exception was {e}')
