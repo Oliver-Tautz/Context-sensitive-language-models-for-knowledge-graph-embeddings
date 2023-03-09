@@ -274,5 +274,5 @@ if __name__ == '__main__':
                         action='store_true')
     
     args=parser.parse_args()
-
+    verbprint("passed args: " + str(args))
     main(args)
