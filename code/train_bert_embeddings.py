@@ -219,8 +219,8 @@ def main(args):
     pl.figure.savefig(SETTING_WORK_FOLDER / 'batchloss_eval.pdf')
 
     # Save model
-    tiny_encoder.save_pretrained(SETTING_WORK_FOLDER / "tiny_bert_from_scratch_simple_eval")
-    tz.save(str(SETTING_WORK_FOLDER / 'tiny_bert_from_scratch_simple_tokenizer_eval.json'))
+    tiny_encoder.save_pretrained(SETTING_WORK_FOLDER / "model")
+    tz.save(str(SETTING_WORK_FOLDER / "tokenizer.json"))
 
     # compute test score
     g_test = Graph()
