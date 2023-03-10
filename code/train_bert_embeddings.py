@@ -64,7 +64,8 @@ def main(args):
         print(f'Your config is wrong or missing parameters :(\n Exception was {e}')
         exit(-1)
 
-
+    if args.debug:
+        SETTING_DEBUG=True
     verbprint("Loading Dataset")
 
     g_train = Graph()
