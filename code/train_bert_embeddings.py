@@ -277,7 +277,7 @@ if __name__ == '__main__':
         )
     
     parser.add_argument("--config", help="Filepath of the config file. See example config.", type=str,
-                        default="bert_train_conf/example_config.ini")
+                        default="conf/example_config.ini")
 
     parser.add_argument("--debug", help="Use small datasets and model for testing. Overwrites config option",
                         action='store_true')
