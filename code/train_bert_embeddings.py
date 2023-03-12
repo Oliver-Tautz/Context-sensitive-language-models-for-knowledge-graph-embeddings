@@ -45,7 +45,7 @@ def main(args):
         SETTING_BERT_MAXLEN = cfg_parser.getint('TRAIN','BERT_MAXLEN')
         SETTING_BERT_BATCHSIZE = cfg_parser.getint('TRAIN', 'BERT_BATCHSIZE')
         SETTING_DEBUG = cfg_parser.getboolean('TRAIN', 'DEBUG')
-        SETTING_WORK_FOLDER = Path(SETTING_BERT_NAME)
+        SETTING_WORK_FOLDER = Path(f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}")
 
 
         # Prompt user for overwrite 
@@ -57,7 +57,7 @@ def main(args):
                     exit(0)
         # Overwrite or create workfolder
         os.makedirs(SETTING_WORK_FOLDER,exist_ok=True)
-        shutil.copyfile(args.config, SETTING_WORK_FOLDER / Path(args.config).name)
+        shutil.copyfile(args.config, SETTING_WORK_FOLDER / 'config.ini')
 
 
     except Exception as e:
