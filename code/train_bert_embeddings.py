@@ -46,6 +46,8 @@ def main(args):
         SETTING_BERT_BATCHSIZE = cfg_parser.getint('TRAIN', 'BERT_BATCHSIZE')
         SETTING_DEBUG = cfg_parser.getboolean('TRAIN', 'DEBUG')
         SETTING_WORK_FOLDER = Path(f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}")
+        SETTING_PLOT_FOLDER = SETTING_WORK_FOLDER / 'plot'
+        SETTING_DATA_FOLDER = SETTING_WORK_FOLDER / 'data'
 
 
         # Prompt user for overwrite 
@@ -205,19 +207,21 @@ def main(args):
 
     # Save data
     os.makedirs(SETTING_WORK_FOLDER,exist_ok=True)
+    os.makedirs(SETTING_PLOT_FOLDER,exist_ok=True)
+    os.makedirs(SETTING_DATA_FOLDER, exist_ok=True)
 
-    pd.DataFrame(history).to_csv(SETTING_WORK_FOLDER / 'bert_loss_eval.csv')
+    pd.DataFrame(history).to_csv(SETTING_DATA_FOLDER / 'bert_loss_eval.csv')
     pl = pd.DataFrame(history).plot()
-    pl.figure.savefig(SETTING_WORK_FOLDER / 'loss_eval_loss.pdf')
+    pl.figure.savefig(SETTING_PLOT_FOLDER / 'loss_eval_loss.pdf')
 
-    pd.DataFrame(batchloss_metric.compute().detach().cpu()).to_csv(SETTING_WORK_FOLDER / 'bert_batchloss.csv')
+    pd.DataFrame(batchloss_metric.compute().detach().cpu()).to_csv(SETTING_DATA_FOLDER / 'bert_batchloss.csv')
     pl = pd.DataFrame(batchloss_metric.compute().detach().cpu()).plot()
-    pl.figure.savefig(SETTING_WORK_FOLDER / 'batchloss.pdf')
+    pl.figure.savefig(SETTING_PLOT_FOLDER / 'batchloss.pdf')
 
 
-    pd.DataFrame(batchloss_metric_eval.compute().detach().cpu()).to_csv(SETTING_WORK_FOLDER / 'bert_batchloss_eval.csv')
+    pd.DataFrame(batchloss_metric_eval.compute().detach().cpu()).to_csv(SETTING_DATA_FOLDER / 'bert_batchloss_eval.csv')
     pl = pd.DataFrame(batchloss_metric_eval.compute().detach().cpu()).plot()
-    pl.figure.savefig(SETTING_WORK_FOLDER / 'batchloss_eval.pdf')
+    pl.figure.savefig(SETTING_PLOT_FOLDER / 'batchloss_eval.pdf')
 
     # Save model
     tiny_encoder.save_pretrained(SETTING_WORK_FOLDER / "model")
@@ -259,7 +263,7 @@ def main(args):
             loss_metric(loss.detach())
             batchloss_metric_eval(loss.detach())
 
-        testscorefile = open(SETTING_WORK_FOLDER / 'testscore.txt',mode='w')
+        testscorefile = open(SETTING_DATA_FOLDER / 'testscore.txt',mode='w')
         testscorefile.write(str(loss_metric.compute().item()))
         testscorefile.close()
         print('testloss = ' + str(loss_metric.compute().item()))
