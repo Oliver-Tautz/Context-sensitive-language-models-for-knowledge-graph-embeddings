@@ -233,7 +233,7 @@ def main(args):
 
     # compute test score
     g_test = Graph()
-    g_test = g_test.parse(SETTING_DATASET_PATH / 'FB15k-237/test.nt', format='nt')
+    g_test = g_test.parse(SETTING_DATASET_PATH / 'test.nt', format='nt')
     dataset_most_simple_test = [' '.join(x) for x in g_test]
     dataset_simple_test = DataseSimpleTriple(dataset_most_simple_test,special_tokens_map,tokenizer=tz)
     dl_test =  DataLoader(dataset_simple_test, batch_size=SETTING_BERT_BATCHSIZE, shuffle=False, pin_memory=True)
