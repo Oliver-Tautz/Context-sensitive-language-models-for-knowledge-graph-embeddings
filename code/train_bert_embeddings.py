@@ -19,7 +19,7 @@ import torchmetrics
 
 from tqdm import tqdm, trange
 from rdflib import Graph
-import sys
+
 import torch
 from torch.utils.data import DataLoader
 from utils_data import DataseSimpleTriple
@@ -44,6 +44,7 @@ def main(args):
         SETTING_BERT_NAME = cfg_parser.get('TRAIN','BERT_NAME')
         SETTING_BERT_MAXLEN = cfg_parser.getint('TRAIN','BERT_MAXLEN')
         SETTING_BERT_BATCHSIZE = cfg_parser.getint('TRAIN', 'BERT_BATCHSIZE')
+        SETTING_BERT_CLASSIFIER_DROPOUT = cfg_parser.getfloat('TRAIN', 'BERT_CLASSIFIER_DROPOUT')
         SETTING_DEBUG = cfg_parser.getboolean('TRAIN', 'DEBUG')
         SETTING_WORK_FOLDER = Path(f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}")
         SETTING_PLOT_FOLDER = SETTING_WORK_FOLDER / 'plot'
@@ -73,8 +74,8 @@ def main(args):
     g_train = Graph()
     g_val = Graph()
 
-    g_train = g_train.parse('FB15k-237/train.nt', format='nt')
-    g_val   = g_val.parse('FB15k-237/valid.nt', format='nt')
+    g_train = g_train.parse(SETTING_DATASET_PATH / 'train.nt', format='nt')
+    g_val   = g_val.parse(SETTING_DATASET_PATH /  'valid.nt', format='nt')
 
     # Join triples together
     dataset_most_simple = [' '.join(x) for x in g_train]
@@ -117,6 +118,9 @@ def main(args):
     encoder_config.num_labels=tz.get_vocab_size()
     encoder_config.hidden_size = SETTING_VECTOR_SIZE
     encoder_config.max_position_embeddings = SETTING_BERT_MAXLEN
+    encoder_config.classifier_dropout = SETTING_BERT_CLASSIFIER_DROPOUT
+
+    print(encoder_config)
 
     del tiny_pretrained
 
@@ -229,7 +233,7 @@ def main(args):
 
     # compute test score
     g_test = Graph()
-    g_test = g_test.parse('FB15k-237/test.nt', format='nt')
+    g_test = g_test.parse(SETTING_DATASET_PATH / 'FB15k-237/test.nt', format='nt')
     dataset_most_simple_test = [' '.join(x) for x in g_test]
     dataset_simple_test = DataseSimpleTriple(dataset_most_simple_test,special_tokens_map,tokenizer=tz)
     dl_test =  DataLoader(dataset_simple_test, batch_size=SETTING_BERT_BATCHSIZE, shuffle=False, pin_memory=True)
