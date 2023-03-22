@@ -92,15 +92,15 @@ def main(args):
         dataset_eval = [' '.join(x) for x in g_val]
     else:
 
-        walks_name = f'/tmp/{f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}"}'
-        walkspath_eval_name = f'/tmp/{f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}"}'
+        walks_name = f'./tmp/{f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}"}'
+        walkspath_eval_name = f'./tmp/{f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}"}'
 
-        walks_name = generate_walks('/tmp', SETTING_DATASET_PATH / 'train.nt',
+        walks_name = generate_walks('./tmp', SETTING_DATASET_PATH / 'train.nt',
                                     walks_name, 4,
                                     SETTING_BERT_WALK_DEPTH, SETTING_BERT_WALK_COUNT,
                                     SETTING_BERT_WALK_GENERATION_MODE)
 
-        walkspath_eval_name = generate_walks('/tmp', SETTING_DATASET_PATH / 'train.nt',
+        walkspath_eval_name = generate_walks('./tmp', SETTING_DATASET_PATH / 'train.nt',
                                              walkspath_eval_name, 4,
                                              SETTING_BERT_WALK_DEPTH, SETTING_BERT_WALK_COUNT,
                                              SETTING_BERT_WALK_GENERATION_MODE)
