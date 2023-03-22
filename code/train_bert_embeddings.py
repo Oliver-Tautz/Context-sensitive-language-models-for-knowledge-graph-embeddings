@@ -8,7 +8,7 @@ from tokenizers.processors import BertProcessing
 from transformers import BertConfig, BertModel, AutoModel
 from utils_graph import get_entities
 import textwrap
-import argparse 
+import argparse
 import configparser
 from pathlib import Path
 import os
@@ -27,20 +27,20 @@ import pandas as pd
 import shutil
 from utils import verbprint
 from utils_train import train_bert_embeddings, score_bert_model
+from jrdf2vec_walks_for_bert import generate_walks
 
 
 def main(args):
-
     try:
 
         cfg_parser = configparser.ConfigParser(allow_no_value=True)
         cfg_parser.read(args.config)
 
         SETTING_DATASET_PATH = Path(cfg_parser['TRAIN']['DATASET_PATH'])
-        SETTING_VECTOR_SIZE= cfg_parser.getint('TRAIN','VECTOR_SIZE')
-        SETTING_BERT_EPOCHS = cfg_parser.getint('TRAIN','BERT_EPOCHS')
-        SETTING_BERT_NAME = cfg_parser.get('TRAIN','BERT_NAME')
-        SETTING_BERT_MAXLEN = cfg_parser.getint('TRAIN','BERT_MAXLEN')
+        SETTING_VECTOR_SIZE = cfg_parser.getint('TRAIN', 'VECTOR_SIZE')
+        SETTING_BERT_EPOCHS = cfg_parser.getint('TRAIN', 'BERT_EPOCHS')
+        SETTING_BERT_NAME = cfg_parser.get('TRAIN', 'BERT_NAME')
+        SETTING_BERT_MAXLEN = cfg_parser.getint('TRAIN', 'BERT_MAXLEN')
         SETTING_BERT_BATCHSIZE = cfg_parser.getint('TRAIN', 'BERT_BATCHSIZE')
         SETTING_BERT_CLASSIFIER_DROPOUT = cfg_parser.getfloat('TRAIN', 'BERT_CLASSIFIER_DROPOUT')
         SETTING_DEBUG = cfg_parser.getboolean('TRAIN', 'DEBUG')
@@ -48,16 +48,20 @@ def main(args):
         SETTING_PLOT_FOLDER = SETTING_WORK_FOLDER / 'plot'
         SETTING_DATA_FOLDER = SETTING_WORK_FOLDER / 'data'
 
+        SETTING_BERT_WALK_USE = cfg_parser.getboolean('TRAIN', 'BERT_WALK_USE')
+        SETTING_BERT_WALK_DEPTH = cfg_parser.getint('TRAIN', 'BERT_WALK_DEPTH')
+        SETTING_BERT_WALK_COUNT = cfg_parser.getint('TRAIN', 'BERT_WALK_COUNT')
+        SETTING_BERT_WALK_GENERATION_MODE = cfg_parser.get('TRAIN', 'BERT_WALK_GENERATION_MODE')
 
-        # Prompt user for overwrite 
-        if not args.no_prompt:       
+        # Prompt user for overwrite
+        if not args.no_prompt:
             if SETTING_WORK_FOLDER.is_file() or SETTING_WORK_FOLDER.is_dir():
                 inp = input('Model already present! Overwrite? [y/N]')
-                if inp =="" or not(inp[0] == 'y' or inp[0] == 'Y'):
+                if inp == "" or not (inp[0] == 'y' or inp[0] == 'Y'):
                     print('User abort.')
                     exit(0)
         # Overwrite or create workfolder
-        os.makedirs(SETTING_WORK_FOLDER,exist_ok=True)
+        os.makedirs(SETTING_WORK_FOLDER, exist_ok=True)
         shutil.copyfile(args.config, SETTING_WORK_FOLDER / 'config.ini')
 
 
@@ -66,28 +70,50 @@ def main(args):
         exit(-1)
 
     if args.debug:
-        SETTING_DEBUG=True
+        SETTING_DEBUG = True
     verbprint("Loading Dataset")
 
-    g_train = Graph()
-    g_val = Graph()
+    if not SETTING_BERT_WALK_USE:
+        g_train = Graph()
+        g_val = Graph()
 
-    g_train = g_train.parse(SETTING_DATASET_PATH / 'train.nt', format='nt')
-    g_val   = g_val.parse(SETTING_DATASET_PATH /  'valid.nt', format='nt')
+        g_train = g_train.parse(SETTING_DATASET_PATH / 'train.nt', format='nt')
+        g_val = g_val.parse(SETTING_DATASET_PATH / 'valid.nt', format='nt')
 
-    # Join triples together
-    dataset_most_simple = [' '.join(x) for x in g_train]
-    dataset_most_simple_eval = [' '.join(x) for x in g_val]
+        # Join triples together
+        dataset = [' '.join(x) for x in g_train]
+        dataset_eval = [' '.join(x) for x in g_val]
+    else:
 
+        walks_name = f'/tmp/{f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}"}'
+        walkspath_eval_name = f'/tmp/{f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}"}'
+
+
+        walks_name = generate_walks('/tmp', SETTING_DATASET_PATH / 'train.nt',
+                                       walks_name, 4,
+                                       SETTING_BERT_WALK_DEPTH, SETTING_BERT_WALK_COUNT,
+                                       SETTING_BERT_WALK_GENERATION_MODE)
+
+        walkspath_eval_name = generate_walks('/tmp', SETTING_DATASET_PATH / 'train.nt',
+                                            walkspath_eval_name, 4,
+                                            SETTING_BERT_WALK_DEPTH, SETTING_BERT_WALK_COUNT,
+                                            SETTING_BERT_WALK_GENERATION_MODE)
+
+        walkspath_file = open(walks_name, 'r')
+        dataset = walkspath_file.readlines()
+        walkspath_file.close()
+
+        walkspath_eval_file = open(walkspath_eval_name, 'r')
+        dataset_eval = walkspath_eval_file.readlines()
+        walkspath_eval_file.close()
 
     if SETTING_DEBUG:
-        dataset_most_simple = dataset_most_simple[0:10000]
-        dataset_most_simple_eval = dataset_most_simple_eval[0:1000]
-        SETTING_BERT_EPOCHS = 3
-        SETTING_BERT_BATCHSIZE=5000
+        dataset = dataset[0:10000]
+        dataset_eval = dataset_eval[0:1000]
+        SETTING_BERT_EPOCHS = 10
+        SETTING_BERT_BATCHSIZE = 5000
 
-
-    verbprint(f"example data: {dataset_most_simple[0:10]}")
+    verbprint(f"example data: {dataset[0:10]}")
     verbprint("Init Model.")
     # Init tokenizer and config from tinybert
     tz = BertTokenizer.from_pretrained("bert-base-cased")
@@ -95,25 +121,21 @@ def main(args):
 
     verbprint(f"special tokens: {special_tokens_map}")
 
-    dataset_simple = DatasetSimpleTriple(dataset_most_simple, special_tokens_map)
+    dataset_simple = DatasetSimpleTriple(dataset, special_tokens_map)
     tz = dataset_simple.get_tokenizer()
-    dataset_simple_eval = DatasetSimpleTriple(dataset_most_simple_eval, special_tokens_map, tokenizer=tz)
-
+    dataset_simple_eval = DatasetSimpleTriple(dataset_eval, special_tokens_map, tokenizer=tz)
 
     verbprint(f"example data processed: {dataset_simple[0]}")
-
 
     tiny_pretrained = AutoModel.from_pretrained('prajjwal1/bert-tiny')
     tiny_config = tiny_pretrained.config
 
-
-
     # Change parameters
-    tiny_config._name_or_path="otautz/tiny"
+    tiny_config._name_or_path = "otautz/tiny"
     encoder_config = copy.copy(tiny_config)
     encoder_config.is_decoder = False
     encoder_config.add_cross_attention = False
-    encoder_config.num_labels=tz.get_vocab_size()
+    encoder_config.num_labels = tz.get_vocab_size()
     encoder_config.hidden_size = SETTING_VECTOR_SIZE
     encoder_config.max_position_embeddings = SETTING_BERT_MAXLEN
     encoder_config.classifier_dropout = SETTING_BERT_CLASSIFIER_DROPOUT
@@ -125,32 +147,34 @@ def main(args):
     #
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-
     print(f'cuda available: {torch.cuda.is_available()}')
-    tiny_encoder  = BertForTokenClassification(encoder_config)
-    tiny_encoder  = tiny_encoder.to(device)
+    tiny_encoder = BertForTokenClassification(encoder_config)
+    tiny_encoder = tiny_encoder.to(device)
 
     lossF = torch.nn.CrossEntropyLoss()
 
     verbprint("Starting training")
 
-    tiny_encoder, optimizer,history = train_bert_embeddings(tiny_encoder,SETTING_BERT_EPOCHS,dataset_simple,dataset_simple_eval,SETTING_BERT_BATCHSIZE,torch.optim.Adam,lossF,device)
+    tiny_encoder, optimizer, history = train_bert_embeddings(tiny_encoder, SETTING_BERT_EPOCHS, dataset_simple,
+                                                             dataset_simple_eval, SETTING_BERT_BATCHSIZE,
+                                                             torch.optim.Adam, lossF, device)
 
     # Save data
-    os.makedirs(SETTING_WORK_FOLDER,exist_ok=True)
-    os.makedirs(SETTING_PLOT_FOLDER,exist_ok=True)
+    os.makedirs(SETTING_WORK_FOLDER, exist_ok=True)
+    os.makedirs(SETTING_PLOT_FOLDER, exist_ok=True)
     os.makedirs(SETTING_DATA_FOLDER, exist_ok=True)
 
     pd.DataFrame(history).to_csv(SETTING_DATA_FOLDER / 'bert_loss_eval.csv')
     pl = pd.DataFrame(history).plot()
     pl.figure.savefig(SETTING_PLOT_FOLDER / 'loss_eval_loss.pdf')
 
-    pd.DataFrame(history['batchloss_metric'].compute().detach().cpu()).to_csv(SETTING_DATA_FOLDER / 'bert_batchloss.csv')
+    pd.DataFrame(history['batchloss_metric'].compute().detach().cpu()).to_csv(
+        SETTING_DATA_FOLDER / 'bert_batchloss.csv')
     pl = pd.DataFrame(history['batchloss_metric'].compute().detach().cpu()).plot()
     pl.figure.savefig(SETTING_PLOT_FOLDER / 'batchloss.pdf')
 
-
-    pd.DataFrame(history['batchloss_metric_eval'].compute().detach().cpu()).to_csv(SETTING_DATA_FOLDER / 'bert_batchloss_eval.csv')
+    pd.DataFrame(history['batchloss_metric_eval'].compute().detach().cpu()).to_csv(
+        SETTING_DATA_FOLDER / 'bert_batchloss_eval.csv')
     pl = pd.DataFrame(history['batchloss_metric_eval'].compute().detach().cpu()).plot()
     pl.figure.savefig(SETTING_PLOT_FOLDER / 'batchloss_eval.pdf')
 
@@ -164,38 +188,33 @@ def main(args):
     dataset_most_simple_test = [' '.join(x) for x in g_test]
     dataset_simple_test = DatasetSimpleTriple(dataset_most_simple_test, special_tokens_map, tokenizer=tz)
 
-
     if SETTING_DEBUG:
         dataset_most_simple_test = dataset_most_simple_test[0:1000]
 
-
-
-
-    testscore = score_bert_model(tiny_encoder,device,dataset_simple_test,SETTING_BERT_BATCHSIZE,optimizer,lossF)
-    testscorefile = open(SETTING_DATA_FOLDER / 'testscore.txt',mode='w')
+    testscore = score_bert_model(tiny_encoder, device, dataset_simple_test, SETTING_BERT_BATCHSIZE, optimizer, lossF)
+    testscorefile = open(SETTING_DATA_FOLDER / 'testscore.txt', mode='w')
     testscorefile.write(str(testscore))
     testscorefile.close()
     print('testloss = ' + str(testscore))
 
 
-
-
 if __name__ == '__main__':
     print('HERE!')
     parser = argparse.ArgumentParser(
-            description="Script to train bert model on a Knowledge graph.",
-            formatter_class=argparse.RawDescriptionHelpFormatter,
-            epilog=textwrap.dedent("""""")
-        )
-    
+        description="Script to train bert model on a Knowledge graph.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=textwrap.dedent("""""")
+    )
+
     parser.add_argument("--config", help="Filepath of the config file. See example config.", type=str,
                         default="conf/example_config.ini")
 
     parser.add_argument("--debug", help="Use small datasets and model for testing. Overwrites config option",
                         action='store_true')
-    parser.add_argument("--no-prompt", help="Dont prompt user, ever! Use this for automated scripting etc. Dangerous though! Can overwrite existing files.",
-                        action='store_true')                    
-    
-    args=parser.parse_args()
+    parser.add_argument("--no-prompt",
+                        help="Dont prompt user, ever! Use this for automated scripting etc. Dangerous though! Can overwrite existing files.",
+                        action='store_true')
+
+    args = parser.parse_args()
     verbprint("passed args: " + str(args))
     main(args)

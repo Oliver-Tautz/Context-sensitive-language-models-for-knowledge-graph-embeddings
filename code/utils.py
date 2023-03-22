@@ -5,8 +5,11 @@ from collections import defaultdict
 import numpy as np
 VERBOSE=1
 
-def run_str(string):
-    subprocess.run(string.split())
+def run_str(string,silent = False):
+    if not silent:
+        subprocess.run(string.split())
+    else:
+        subprocess.run(string.split(),capture_output=True)
 
 
 def pickle_save(obj, filename):
