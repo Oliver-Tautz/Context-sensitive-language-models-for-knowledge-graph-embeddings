@@ -7,10 +7,10 @@ import multiprocessing
 # download jrdf2vec
 run_str("wget -q -nc https://raw.githubusercontent.com/dwslab/jRDF2Vec/jars/jars/jrdf2vec-1.3-SNAPSHOT.jar")
 
-# download dataset
+# download dataset_file
 run_str("wget  -q -nc --no-check-certificate https://docs.google.com/uc?export=download&id=1pBnn8bjI2VkVvBR33DnvpeyocfDhMCFA -O fb15k-237_nt.zip")
 
-# unzip dataset
+# unzip dataset_file
 run_str("unzip -n fb15k-237_nt.zip")
 
 # clean directory

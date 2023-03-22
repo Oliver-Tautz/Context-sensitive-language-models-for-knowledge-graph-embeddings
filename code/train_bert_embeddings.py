@@ -22,7 +22,7 @@ from rdflib import Graph
 
 import torch
 from torch.utils.data import DataLoader
-from utils_data import DataseSimpleTriple
+from utils_data import DatasetSimpleTriple
 import pandas as pd
 import shutil
 from utils import verbprint
@@ -95,9 +95,9 @@ def main(args):
 
     verbprint(f"special tokens: {special_tokens_map}")
 
-    dataset_simple = DataseSimpleTriple(dataset_most_simple,special_tokens_map)
+    dataset_simple = DatasetSimpleTriple(dataset_most_simple, special_tokens_map)
     tz = dataset_simple.get_tokenizer()
-    dataset_simple_eval = DataseSimpleTriple(dataset_most_simple_eval,special_tokens_map,tokenizer=tz)
+    dataset_simple_eval = DatasetSimpleTriple(dataset_most_simple_eval, special_tokens_map, tokenizer=tz)
 
 
     verbprint(f"example data processed: {dataset_simple[0]}")
@@ -162,7 +162,7 @@ def main(args):
     g_test = Graph()
     g_test = g_test.parse(SETTING_DATASET_PATH / 'test.nt', format='nt')
     dataset_most_simple_test = [' '.join(x) for x in g_test]
-    dataset_simple_test = DataseSimpleTriple(dataset_most_simple_test,special_tokens_map,tokenizer=tz)
+    dataset_simple_test = DatasetSimpleTriple(dataset_most_simple_test, special_tokens_map, tokenizer=tz)
 
 
     if SETTING_DEBUG:

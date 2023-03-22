@@ -57,7 +57,7 @@ def mask_list(l, mask_token, vocab_size, special_token_ids):
     # get random mask for each token, but not for special tokens
     return torch.tensor([random_mask(y, mask_token, vocab_size) if y not in special_token_ids else (y, 0) for y in l])
 
-class DataseSimpleTriple(torch.utils.data.Dataset):
+class DatasetSimpleTriple(torch.utils.data.Dataset):
     def __init__(self, triples, special_tokens_map,tokenizer=None, max_length=128):
 
         if not tokenizer:
@@ -76,12 +76,25 @@ class DataseSimpleTriple(torch.utils.data.Dataset):
             word_level_tokenizer = tokenizer
 
         self.mask_token_id = word_level_tokenizer.token_to_id(special_tokens_map['mask_token'])
-        word_level_tokenizer.enable_truncation(max_length=max_length)
-        self.labels = torch.tensor([x.ids for x in word_level_tokenizer.encode_batch(triples)])
+        pad_token_id = word_level_tokenizer.token_to_id(special_tokens_map['pad_token'])
 
+        word_level_tokenizer.enable_truncation(max_length=max_length)
+        word_level_tokenizer.enable_padding(pad_token=special_tokens_map['pad_token'],pad_id=pad_token_id)
+
+        tokenization = word_level_tokenizer.encode_batch(triples)
+
+
+        self.labels = [x.ids for x in tokenization]
+        self.attention_masks = [x.attention_mask for x in tokenization]
+
+
+        self.labels = torch.tensor(self.labels)
+        self.attention_masks = torch.tensor(self.attention_masks)
+        print(self.attention_masks.shape)
+        #self.attention_masks = torch.stack([torch.ones(len(x)) for x in self.labels])
         self.special_token_ids = [word_level_tokenizer.token_to_id(x) for x in special_tokens_map.values()]
 
-        self.attention_masks = torch.stack([torch.ones(len(x)) for x in self.labels])
+
         self.word_level_tokenizer = word_level_tokenizer
 
     def __len__(self):
@@ -204,7 +217,7 @@ def get_bert_simple_dataset(graph):
 
     del(tz)
 
-    dataset = DataseSimpleTriple(dataset_most_simple,special_tokens_map)
+    dataset = DatasetSimpleTriple(dataset_most_simple, special_tokens_map)
     tz = dataset.get_tokenizer()
 
     return dataset, tz

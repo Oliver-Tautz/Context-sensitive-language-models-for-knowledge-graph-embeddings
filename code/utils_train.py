@@ -45,7 +45,7 @@ def fit_1_1(model, graph, word_vec_mapping, batch_size, entities, metrics=None, 
         for X, Y in dataloader:
             model.train()
 
-            # shape is (bs,2,3*VECTORSIZE) because of dataset implementation
+            # shape is (bs,2,3*VECTORSIZE) because of dataset_file implementation
             # so I need to flatten the arrays
             X = torch.flatten(X, 0, 1)
             Y = torch.flatten(Y)
@@ -76,7 +76,7 @@ def fit_1_1(model, graph, word_vec_mapping, batch_size, entities, metrics=None, 
                 for X, Y in dataloader_eval:
                     model.eval()
 
-                    # shape is (bs,2,3*VECTORSIZE) because of dataset implementation
+                    # shape is (bs,2,3*VECTORSIZE) because of dataset_file implementation
                     # so I need to flatten the arrays
                     X = torch.flatten(X, 0, 1)
                     Y = torch.flatten(Y)
@@ -102,7 +102,7 @@ def fit_1_1(model, graph, word_vec_mapping, batch_size, entities, metrics=None, 
 
 def train_bert_embeddings(model, epochs, dataset, dataset_eval, batchsize, optimizer, lossF, device):
     """
-    Train a model on a dataset.
+    Train a model on a dataset_file.
 
 
 

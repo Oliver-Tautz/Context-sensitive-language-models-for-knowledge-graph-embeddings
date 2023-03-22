@@ -14,7 +14,7 @@ from utils_graph import clean_graph,get_entities
 
 
 def train_rdf2vec_classifier(trainpath='FB15k-237/train.nt',valpath='FB15k-237/valid.nt',rdf2vecmodel='walks/model'):
-    # load dataset
+    # load dataset_file
 
     g_train = Graph()
     g_val = Graph()
