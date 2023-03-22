@@ -3,7 +3,7 @@ import pickle
 from time import perf_counter
 from collections import defaultdict
 import numpy as np
-
+VERBOSE=1
 
 def run_str(string):
     subprocess.run(string.split())
@@ -43,6 +43,9 @@ def map_keyed_vectors(word_vectors, iterable):
     """
     return np.array(list(word_vectors.get_vector(x) for x in iterable))
 
+def verbprint(str):
+    if VERBOSE:
+        print(str)
 
 class PerfTimer():
     def __init__(self):

@@ -25,11 +25,9 @@ from torch.utils.data import DataLoader
 from utils_data import DataseSimpleTriple
 import pandas as pd
 import shutil
-VERBOSE=1
+from utils import verbprint
+from utils_train import train_bert_embeddings, score_bert_model
 
-def verbprint(str):
-    if VERBOSE:
-        print(str)
 
 def main(args):
 
@@ -134,80 +132,9 @@ def main(args):
 
     lossF = torch.nn.CrossEntropyLoss()
 
-    dl = DataLoader(dataset_simple,batch_size=SETTING_BERT_BATCHSIZE,shuffle=True,pin_memory=True)
-    dl_eval =  DataLoader(dataset_simple_eval, batch_size=SETTING_BERT_BATCHSIZE, shuffle=False, pin_memory=True)
-
-    optimizer = torch.optim.Adam(tiny_encoder.parameters())
-
-    loss_metric = torchmetrics.aggregation.MeanMetric().to(device)
-    batchloss_metric = torchmetrics.aggregation.CatMetric().to(device)
-    batchloss_metric_eval = torchmetrics.aggregation.CatMetric().to(device)
-    history = defaultdict(list)
-
-    verbprint(f"cuda_model: {next(tiny_encoder.parameters()).is_cuda}")
-
-
     verbprint("Starting training")
 
-    for epochs in trange(SETTING_BERT_EPOCHS):
-        for inputs, batch_mask, batch_labels in dl:
-            tiny_encoder.train()
-            optimizer.zero_grad()
-            batch_id = inputs[:, :, 0]
-
-            out = tiny_encoder.forward(batch_id.to(device), batch_mask.to(device))
-            logits = out.logits
-
-            # (batchsize, sequence_len, no_labels)
-            logits_shape = logits.shape
-
-            # (batchsize * sequence_len, no_labels)
-            logits_no_sequence = logits.reshape(logits_shape[0] * logits_shape[1], logits_shape[2])
-
-            # (batchsize)
-            batch_labels_no_sequence = batch_labels.flatten().to(device)
-
-            batch_mask = (inputs[:, :, 1] > 0).flatten().to(device)
-
-            loss = lossF(logits_no_sequence[batch_mask], batch_labels_no_sequence[batch_mask])
-
-            loss.backward()
-            optimizer.step()
-
-            # detach loss! Otherwise causes memory leakage
-            loss_metric(loss.detach())
-            batchloss_metric(loss.detach())
-
-        history['loss'].append(loss_metric.compute().detach().item())
-        loss_metric.reset()
-        with torch.no_grad():
-            tiny_encoder.eval()
-            for inputs, batch_mask, batch_labels in dl_eval:
-                optimizer.zero_grad()
-                batch_id = inputs[:, :, 0]
-
-                out = tiny_encoder.forward(batch_id.to(device), batch_mask.to(device))
-                logits = out.logits
-
-                # (batchsize, sequence_len, no_labels)
-                logits_shape = logits.shape
-
-                # (batchsize * sequence_len, no_labels)
-                logits_no_sequence = logits.reshape(logits_shape[0] * logits_shape[1], logits_shape[2])
-
-                # (batchsize)
-                batch_labels_no_sequence = batch_labels.flatten().to(device)
-
-                batch_mask = (inputs[:, :, 1] > 0).flatten().to(device)
-
-                loss = lossF(logits_no_sequence[batch_mask], batch_labels_no_sequence[batch_mask])
-
-                loss_metric(loss.detach())
-                batchloss_metric_eval(loss.detach())
-
-            history['loss_eval'].append(loss_metric.compute().detach().item())
-            loss_metric.reset()
-
+    tiny_encoder, optimizer,history = train_bert_embeddings(tiny_encoder,SETTING_BERT_EPOCHS,dataset_simple,dataset_simple_eval,SETTING_BERT_BATCHSIZE,torch.optim.Adam,lossF,device)
 
     # Save data
     os.makedirs(SETTING_WORK_FOLDER,exist_ok=True)
@@ -218,13 +145,13 @@ def main(args):
     pl = pd.DataFrame(history).plot()
     pl.figure.savefig(SETTING_PLOT_FOLDER / 'loss_eval_loss.pdf')
 
-    pd.DataFrame(batchloss_metric.compute().detach().cpu()).to_csv(SETTING_DATA_FOLDER / 'bert_batchloss.csv')
-    pl = pd.DataFrame(batchloss_metric.compute().detach().cpu()).plot()
+    pd.DataFrame(history['batchloss_metric'].compute().detach().cpu()).to_csv(SETTING_DATA_FOLDER / 'bert_batchloss.csv')
+    pl = pd.DataFrame(history['batchloss_metric'].compute().detach().cpu()).plot()
     pl.figure.savefig(SETTING_PLOT_FOLDER / 'batchloss.pdf')
 
 
-    pd.DataFrame(batchloss_metric_eval.compute().detach().cpu()).to_csv(SETTING_DATA_FOLDER / 'bert_batchloss_eval.csv')
-    pl = pd.DataFrame(batchloss_metric_eval.compute().detach().cpu()).plot()
+    pd.DataFrame(history['batchloss_metric_eval'].compute().detach().cpu()).to_csv(SETTING_DATA_FOLDER / 'bert_batchloss_eval.csv')
+    pl = pd.DataFrame(history['batchloss_metric_eval'].compute().detach().cpu()).plot()
     pl.figure.savefig(SETTING_PLOT_FOLDER / 'batchloss_eval.pdf')
 
     # Save model
@@ -236,41 +163,22 @@ def main(args):
     g_test = g_test.parse(SETTING_DATASET_PATH / 'test.nt', format='nt')
     dataset_most_simple_test = [' '.join(x) for x in g_test]
     dataset_simple_test = DataseSimpleTriple(dataset_most_simple_test,special_tokens_map,tokenizer=tz)
-    dl_test =  DataLoader(dataset_simple_test, batch_size=SETTING_BERT_BATCHSIZE, shuffle=False, pin_memory=True)
+
 
     if SETTING_DEBUG:
         dataset_most_simple_test = dataset_most_simple_test[0:1000]
 
-    with torch.no_grad():
-        tiny_encoder.eval()
-        loss_metric.reset()
-        for inputs, batch_mask, batch_labels in dl_test:
-            optimizer.zero_grad()
-            batch_id = inputs[:, :, 0]
 
-            out = tiny_encoder.forward(batch_id.to(device), batch_mask.to(device))
-            logits = out.logits
 
-            # (batchsize, sequence_len, no_labels)
-            logits_shape = logits.shape
 
-            # (batchsize * sequence_len, no_labels)
-            logits_no_sequence = logits.reshape(logits_shape[0] * logits_shape[1], logits_shape[2])
+    testscore = score_bert_model(tiny_encoder,device,dataset_simple_test,SETTING_BERT_BATCHSIZE,optimizer,lossF)
+    testscorefile = open(SETTING_DATA_FOLDER / 'testscore.txt',mode='w')
+    testscorefile.write(str(testscore))
+    testscorefile.close()
+    print('testloss = ' + str(testscore))
 
-            # (batchsize)
-            batch_labels_no_sequence = batch_labels.flatten().to(device)
 
-            batch_mask = (inputs[:, :, 1] > 0).flatten().to(device)
 
-            loss = lossF(logits_no_sequence[batch_mask], batch_labels_no_sequence[batch_mask])
-
-            loss_metric(loss.detach())
-            batchloss_metric_eval(loss.detach())
-
-        testscorefile = open(SETTING_DATA_FOLDER / 'testscore.txt',mode='w')
-        testscorefile.write(str(loss_metric.compute().item()))
-        testscorefile.close()
-        print('testloss = ' + str(loss_metric.compute().item()))
 
 if __name__ == '__main__':
     print('HERE!')

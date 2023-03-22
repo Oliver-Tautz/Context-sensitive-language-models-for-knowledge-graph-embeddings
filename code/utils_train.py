@@ -9,7 +9,7 @@ from utils_data import Dataset11, get_vectors_fast
 from settings import VECTOR_SIZE
 from utils import choose
 from utils_graph import get_random_corrupted_triple
-
+from utils import verbprint
 
 def fit_1_1(model, graph, word_vec_mapping, batch_size, entities, metrics=None, epochs=50, optimizer=None,
             lossF=torch.nn.BCEWithLogitsLoss(), graph_eval=None):
@@ -98,7 +98,129 @@ def fit_1_1(model, graph, word_vec_mapping, batch_size, entities, metrics=None, 
                 loss_metric.reset()
                 # tensor - > float conversion
     history = {k: [x.item() for x in v] for (k, v) in history.items()}
-    return model, history
+    return model, optimizer, history
+
+def train_bert_embeddings(model, epochs, dataset, dataset_eval, batchsize, optimizer, lossF, device):
+    """
+    Train a model on a dataset.
+
+
+
+    """
+    dl = DataLoader(dataset,batch_size=batchsize,shuffle=True,pin_memory=True)
+    dl_eval =  DataLoader(dataset_eval, batch_size=batchsize, shuffle=False, pin_memory=True)
+
+    optimizer = optimizer(model.parameters())
+
+    loss_metric = torchmetrics.aggregation.MeanMetric().to(device)
+    batchloss_metric = torchmetrics.aggregation.CatMetric().to(device)
+    batchloss_metric_eval = torchmetrics.aggregation.CatMetric().to(device)
+    history = defaultdict(list)
+
+    verbprint(f"cuda_model: {next(model.parameters()).is_cuda}")
+
+
+    verbprint("Starting training")
+
+    for ep in trange(epochs):
+        for inputs, batch_mask, batch_labels in dl:
+            model.train()
+            optimizer.zero_grad()
+            batch_id = inputs[:, :, 0]
+
+            out = model.forward(batch_id.to(device), batch_mask.to(device))
+            logits = out.logits
+
+            # (batchsize, sequence_len, no_labels)
+            logits_shape = logits.shape
+
+            # (batchsize * sequence_len, no_labels)
+            logits_no_sequence = logits.reshape(logits_shape[0] * logits_shape[1], logits_shape[2])
+
+            # (batchsize)
+            batch_labels_no_sequence = batch_labels.flatten().to(device)
+
+            batch_mask = (inputs[:, :, 1] > 0).flatten().to(device)
+
+            loss = lossF(logits_no_sequence[batch_mask], batch_labels_no_sequence[batch_mask])
+
+            loss.backward()
+            optimizer.step()
+
+            # detach loss! Otherwise causes memory leakage
+            loss_metric(loss.detach())
+            batchloss_metric(loss.detach())
+
+        history['loss'].append(loss_metric.compute().detach().item())
+        loss_metric.reset()
+        with torch.no_grad():
+            model.eval()
+            for inputs, batch_mask, batch_labels in dl_eval:
+                optimizer.zero_grad()
+                batch_id = inputs[:, :, 0]
+
+                out = model.forward(batch_id.to(device), batch_mask.to(device))
+                logits = out.logits
+
+                # (batchsize, sequence_len, no_labels)
+                logits_shape = logits.shape
+
+                # (batchsize * sequence_len, no_labels)
+                logits_no_sequence = logits.reshape(logits_shape[0] * logits_shape[1], logits_shape[2])
+
+                # (batchsize)
+                batch_labels_no_sequence = batch_labels.flatten().to(device)
+
+                batch_mask = (inputs[:, :, 1] > 0).flatten().to(device)
+
+                loss = lossF(logits_no_sequence[batch_mask], batch_labels_no_sequence[batch_mask])
+
+                loss_metric(loss.detach())
+                batchloss_metric_eval(loss.detach())
+
+            history['loss_eval'].append(loss_metric.compute().detach().item())
+            loss_metric.reset()
+
+    history['batchloss_metric'] = batchloss_metric
+    history['batchloss_metric_eval'] = batchloss_metric_eval
+
+    return model, optimizer, history
+
+
+def score_bert_model(model,device,dataset,batchsize,optimizer,lossF):
+
+
+    with torch.no_grad():
+
+        dl_test = DataLoader(dataset, batch_size=batchsize, shuffle=False, pin_memory=True)
+        loss_metric = torchmetrics.aggregation.MeanMetric().to(device)
+        batchloss_metric_eval = torchmetrics.aggregation.CatMetric().to(device)
+
+        model.eval()
+        loss_metric.reset()
+        for inputs, batch_mask, batch_labels in dl_test:
+            optimizer.zero_grad()
+            batch_id = inputs[:, :, 0]
+
+            out = model.forward(batch_id.to(device), batch_mask.to(device))
+            logits = out.logits
+
+            # (batchsize, sequence_len, no_labels)
+            logits_shape = logits.shape
+
+            # (batchsize * sequence_len, no_labels)
+            logits_no_sequence = logits.reshape(logits_shape[0] * logits_shape[1], logits_shape[2])
+
+            # (batchsize)
+            batch_labels_no_sequence = batch_labels.flatten().to(device)
+
+            batch_mask = (inputs[:, :, 1] > 0).flatten().to(device)
+
+            loss = lossF(logits_no_sequence[batch_mask], batch_labels_no_sequence[batch_mask])
+
+            loss_metric(loss.detach())
+            batchloss_metric_eval(loss.detach())
+    return loss_metric.compute().item()
 
 
 def get_bert_embeddings(entities, bert_model, tokenizer):
