@@ -44,14 +44,21 @@ def main(args):
         SETTING_BERT_BATCHSIZE = cfg_parser.getint('TRAIN', 'BERT_BATCHSIZE')
         SETTING_BERT_CLASSIFIER_DROPOUT = cfg_parser.getfloat('TRAIN', 'BERT_CLASSIFIER_DROPOUT')
         SETTING_DEBUG = cfg_parser.getboolean('TRAIN', 'DEBUG')
-        SETTING_WORK_FOLDER = Path(f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}")
-        SETTING_PLOT_FOLDER = SETTING_WORK_FOLDER / 'plot'
-        SETTING_DATA_FOLDER = SETTING_WORK_FOLDER / 'data'
 
         SETTING_BERT_WALK_USE = cfg_parser.getboolean('TRAIN', 'BERT_WALK_USE')
         SETTING_BERT_WALK_DEPTH = cfg_parser.getint('TRAIN', 'BERT_WALK_DEPTH')
         SETTING_BERT_WALK_COUNT = cfg_parser.getint('TRAIN', 'BERT_WALK_COUNT')
         SETTING_BERT_WALK_GENERATION_MODE = cfg_parser.get('TRAIN', 'BERT_WALK_GENERATION_MODE')
+
+        if SETTING_BERT_WALK_USE:
+            SETTING_WORK_FOLDER = Path(
+                f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}_walks_d={SETTING_BERT_WALK_DEPTH}\
+                _w={SETTING_BERT_WALK_COUNT},g={SETTING_BERT_WALK_GENERATION_MODE}")
+        else:
+            SETTING_WORK_FOLDER = Path(f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}")
+
+        SETTING_PLOT_FOLDER = SETTING_WORK_FOLDER / 'plot'
+        SETTING_DATA_FOLDER = SETTING_WORK_FOLDER / 'data'
 
         # Prompt user for overwrite
         if not args.no_prompt:
@@ -88,17 +95,17 @@ def main(args):
         walks_name = f'/tmp/{f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}"}'
         walkspath_eval_name = f'/tmp/{f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}"}'
 
-
         walks_name = generate_walks('/tmp', SETTING_DATASET_PATH / 'train.nt',
-                                       walks_name, 4,
-                                       SETTING_BERT_WALK_DEPTH, SETTING_BERT_WALK_COUNT,
-                                       SETTING_BERT_WALK_GENERATION_MODE)
+                                    walks_name, 4,
+                                    SETTING_BERT_WALK_DEPTH, SETTING_BERT_WALK_COUNT,
+                                    SETTING_BERT_WALK_GENERATION_MODE)
 
         walkspath_eval_name = generate_walks('/tmp', SETTING_DATASET_PATH / 'train.nt',
-                                            walkspath_eval_name, 4,
-                                            SETTING_BERT_WALK_DEPTH, SETTING_BERT_WALK_COUNT,
-                                            SETTING_BERT_WALK_GENERATION_MODE)
+                                             walkspath_eval_name, 4,
+                                             SETTING_BERT_WALK_DEPTH, SETTING_BERT_WALK_COUNT,
+                                             SETTING_BERT_WALK_GENERATION_MODE)
 
+        # Warning, this reads lines with \n in it. Whitespace splitting takes care of it in the tokenizer.
         walkspath_file = open(walks_name, 'r')
         dataset = walkspath_file.readlines()
         walkspath_file.close()
