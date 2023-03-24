@@ -50,9 +50,11 @@ def main(args):
         SETTING_BERT_WALK_COUNT = cfg_parser.getint('TRAIN', 'BERT_WALK_COUNT')
         SETTING_BERT_WALK_GENERATION_MODE = cfg_parser.get('TRAIN', 'BERT_WALK_GENERATION_MODE')
 
+        SETTING_BERT_DATASET_TYPE=cfg_parser.get('TRAIN','BERT_DATASET_TYPE')
+
         if SETTING_BERT_WALK_USE:
             SETTING_WORK_FOLDER = Path(
-                f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}_walks_d={SETTING_BERT_WALK_DEPTH}_w={SETTING_BERT_WALK_COUNT},g={SETTING_BERT_WALK_GENERATION_MODE}")
+                f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}_walks_d={SETTING_BERT_WALK_DEPTH}_w={SETTING_BERT_WALK_COUNT}_g={SETTING_BERT_WALK_GENERATION_MODE}_dataset={SETTING_BERT_DATASET_TYPE}")
         else:
             SETTING_WORK_FOLDER = Path(f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}")
 
@@ -127,9 +129,9 @@ def main(args):
 
     verbprint(f"special tokens: {special_tokens_map}")
 
-    dataset_simple = DatasetSimpleTriple(dataset, special_tokens_map)
+    dataset_simple = DatasetSimpleTriple(dataset, special_tokens_map,dataset_type=SETTING_BERT_DATASET_TYPE)
     tz = dataset_simple.get_tokenizer()
-    dataset_simple_eval = DatasetSimpleTriple(dataset_eval, special_tokens_map, tokenizer=tz)
+    dataset_simple_eval = DatasetSimpleTriple(dataset_eval, special_tokens_map, tokenizer=tz,dataset_type=SETTING_BERT_DATASET_TYPE)
 
     verbprint(f"example data processed: {dataset_simple[0]}")
 
@@ -192,7 +194,7 @@ def main(args):
     g_test = Graph()
     g_test = g_test.parse(SETTING_DATASET_PATH / 'test.nt', format='nt')
     dataset_most_simple_test = [' '.join(x) for x in g_test]
-    dataset_simple_test = DatasetSimpleTriple(dataset_most_simple_test, special_tokens_map, tokenizer=tz)
+    dataset_simple_test = DatasetSimpleTriple(dataset_most_simple_test, special_tokens_map, tokenizer=tz,dataset_type=SETTING_BERT_DATASET_TYPE)
 
     if SETTING_DEBUG:
         dataset_most_simple_test = dataset_most_simple_test[0:1000]

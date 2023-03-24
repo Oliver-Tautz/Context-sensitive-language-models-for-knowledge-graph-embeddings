@@ -12,6 +12,7 @@ from transformers import BertConfig, BertModel, AutoModel
 
 import numpy as np
 
+
 class Dataset11(torch.utils.data.Dataset):
     def __init__(self, graph, vec_mapping, entities, corrupt='random', vector_size=VECTOR_SIZE):
         """
@@ -49,17 +50,40 @@ def random_mask(token, mask_token, vocab_size, mask_chance=0.15, mask_token_chan
 
 def mask_list_of_lists(l, mask_token, vocab_size, special_token_ids):
     # get random mask for each token, but not for special tokens
+    # this is not used ... probably too slow?!
     return torch.tensor(
         [[random_mask(y, mask_token, vocab_size) if y not in special_token_ids else y for y in x] for x in l])
 
+def lm_mask(ids,mask_token,special_token_ids):
+    #TODO!
+    return None
 
-def mask_list(l, mask_token, vocab_size, special_token_ids):
+def mask_list(l, mask_token, vocab_size, special_token_ids, type="MLM",typeargs=None):
     # get random mask for each token, but not for special tokens
-    return torch.tensor([random_mask(y, mask_token, vocab_size) if y not in special_token_ids else (y, 0) for y in l])
+    if type =="MLM":
+        return torch.tensor(
+            [random_mask(y, mask_token, vocab_size) if y not in special_token_ids else (y, 0) for y in l])
+    elif type == "MASS":
+        return torch.tensor(
+            [random_mask(y, mask_token, vocab_size,mask_token_chance=1) if y not in special_token_ids else (y, 0) for y in l])
+    elif type == "LM":
+        lm_mask(l,mask_token,special_token_ids)
+
 
 class DatasetSimpleTriple(torch.utils.data.Dataset):
-    def __init__(self, triples, special_tokens_map,tokenizer=None, max_length=128):
+    def __init__(self, triples, special_tokens_map, tokenizer=None, max_length=128, dataset_type="MLM"):
+        """
 
+
+        dataset_type: one of MLM,MASS,LM,LP
+
+        MLM: Masked language modeling with mask tokens and random replacements
+        MASS: MLM with only mask tokens
+        TODO LM: Language modeling: predict end/beginning of sentence
+        TODO LP: Link prediction
+        """
+
+        self.dataset_type = dataset_type
         if not tokenizer:
             word_level_tokenizer = Tokenizer(WordLevel(unk_token=special_tokens_map['unk_token']))
             word_level_trainer = WordLevelTrainer(special_tokens=list(special_tokens_map.values()))
@@ -79,21 +103,18 @@ class DatasetSimpleTriple(torch.utils.data.Dataset):
         pad_token_id = word_level_tokenizer.token_to_id(special_tokens_map['pad_token'])
 
         word_level_tokenizer.enable_truncation(max_length=max_length)
-        word_level_tokenizer.enable_padding(pad_token=special_tokens_map['pad_token'],pad_id=pad_token_id)
+        word_level_tokenizer.enable_padding(pad_token=special_tokens_map['pad_token'], pad_id=pad_token_id)
 
         tokenization = word_level_tokenizer.encode_batch(triples)
-
 
         self.labels = [x.ids for x in tokenization]
         self.attention_masks = [x.attention_mask for x in tokenization]
 
-
         self.labels = torch.tensor(self.labels)
         self.attention_masks = torch.tensor(self.attention_masks)
         print(self.attention_masks.shape)
-        #self.attention_masks = torch.stack([torch.ones(len(x)) for x in self.labels])
+        # self.attention_masks = torch.stack([torch.ones(len(x)) for x in self.labels])
         self.special_token_ids = [word_level_tokenizer.token_to_id(x) for x in special_tokens_map.values()]
-
 
         self.word_level_tokenizer = word_level_tokenizer
 
@@ -101,9 +122,22 @@ class DatasetSimpleTriple(torch.utils.data.Dataset):
         return len(self.labels)
 
     def __getitem__(self, i):
-        return mask_list(self.labels[i], self.mask_token_id,
-                         self.word_level_tokenizer.get_vocab_size(), self.special_token_ids), self.attention_masks[i], \
-               self.labels[i]
+        if self.dataset_type == "MLM":
+
+            return mask_list(self.labels[i], self.mask_token_id,
+                             self.word_level_tokenizer.get_vocab_size(), self.special_token_ids), self.attention_masks[
+                i], \
+                self.labels[i]
+        elif self.dataset_type == "MASS":
+            return mask_list_mass(self.labels[i], self.mask_token_id,
+                                  self.word_level_tokenizer.get_vocab_size(), self.special_token_ids), \
+            self.attention_masks[i], \
+                self.labels[i]
+
+
+        else:
+            print(f"dataset_type {self.dataset_type} not implemented! Abort :(")
+            exit(-1)
 
     def get_tokenizer(self):
         return self.word_level_tokenizer
@@ -151,7 +185,6 @@ def get_vectors_fast(triples, entity_vec_mapping, vector_size=VECTOR_SIZE):
     # ~20-30% faster
     X = np.array(triples)
     X = entity_vec_mapping(X.flatten()).reshape(len(triples), vector_size * 3)
-
 
     return X
 
@@ -205,8 +238,6 @@ def get_random_corrupted_triple_embedded(triple, entities, corrupt='object', vec
 
 
 def get_bert_simple_dataset(graph):
-
-
     # Just 's p o' as sentence.
     dataset_most_simple = [' '.join(x) for x in graph]
 
@@ -215,7 +246,7 @@ def get_bert_simple_dataset(graph):
 
     special_tokens_map = tz.special_tokens_map_extended
 
-    del(tz)
+    del (tz)
 
     dataset = DatasetSimpleTriple(dataset_most_simple, special_tokens_map)
     tz = dataset.get_tokenizer()
