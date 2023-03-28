@@ -10,6 +10,8 @@ from settings import VECTOR_SIZE
 from utils import choose
 from utils_graph import get_random_corrupted_triple
 from utils import verbprint
+from profiler import Profiler
+
 
 def fit_1_1(model, graph, word_vec_mapping, batch_size, entities, metrics=None, epochs=50, optimizer=None,
             lossF=torch.nn.BCEWithLogitsLoss(), graph_eval=None):
@@ -100,15 +102,15 @@ def fit_1_1(model, graph, word_vec_mapping, batch_size, entities, metrics=None, 
     history = {k: [x.item() for x in v] for (k, v) in history.items()}
     return model, optimizer, history
 
+
 def train_bert_embeddings(model, epochs, dataset, dataset_eval, batchsize, optimizer, lossF, device):
     """
     Train a model on a dataset_file.
 
-
-
     """
-    dl = DataLoader(dataset,batch_size=batchsize,shuffle=True,pin_memory=True)
-    dl_eval =  DataLoader(dataset_eval, batch_size=batchsize, shuffle=False, pin_memory=True)
+
+    dl = DataLoader(dataset, batch_size=batchsize, shuffle=True, pin_memory=True)
+    dl_eval = DataLoader(dataset_eval, batch_size=batchsize, shuffle=False, pin_memory=True)
 
     optimizer = optimizer(model.parameters())
 
@@ -118,17 +120,29 @@ def train_bert_embeddings(model, epochs, dataset, dataset_eval, batchsize, optim
     history = defaultdict(list)
 
     verbprint(f"cuda_model: {next(model.parameters()).is_cuda}")
-
-
     verbprint("Starting training")
+
+    profiler = Profiler(['batch', 'device', 'forward','loss' ,'backward', 'metrics', 'eval'])
 
     for ep in trange(epochs):
         for inputs, batch_mask, batch_labels in dl:
+            profiler.timer_start('batch')
+
             model.train()
             optimizer.zero_grad()
             batch_id = inputs[:, :, 0]
+            profiler.timer_stop('batch')
 
+            profiler.timer_start('device')
+            batch_id = batch_id.to(device)
+            batch_mask = batch_mask.to(device)
+            profiler.timer_stop('device')
+
+            profiler.timer_start('forward')
             out = model.forward(batch_id.to(device), batch_mask.to(device))
+            profiler.timer_stop('forward')
+            profiler.timer_start('loss')
+
             logits = out.logits
 
             # (batchsize, sequence_len, no_labels)
@@ -139,20 +153,33 @@ def train_bert_embeddings(model, epochs, dataset, dataset_eval, batchsize, optim
 
             # (batchsize)
             batch_labels_no_sequence = batch_labels.flatten().to(device)
-
             batch_mask = (inputs[:, :, 1] > 0).flatten().to(device)
 
             loss = lossF(logits_no_sequence[batch_mask], batch_labels_no_sequence[batch_mask])
 
+            profiler.timer_stop('loss')
+
+            profiler.timer_start('backward')
+
             loss.backward()
             optimizer.step()
 
+            profiler.timer_stop('backward')
+
             # detach loss! Otherwise causes memory leakage
+
+            profiler.timer_start('metrics')
             loss_metric(loss.detach())
             batchloss_metric(loss.detach())
+            profiler.timer_stop('metrics')
 
+        profiler.timer_start('metrics')
         history['loss'].append(loss_metric.compute().detach().item())
         loss_metric.reset()
+        profiler.timer_stop('metrics')
+
+
+        profiler.timer_start('eval')
         with torch.no_grad():
             model.eval()
             for inputs, batch_mask, batch_labels in dl_eval:
@@ -180,18 +207,18 @@ def train_bert_embeddings(model, epochs, dataset, dataset_eval, batchsize, optim
 
             history['loss_eval'].append(loss_metric.compute().detach().item())
             loss_metric.reset()
+        profiler.timer_stop('eval')
 
     history['batchloss_metric'] = batchloss_metric
     history['batchloss_metric_eval'] = batchloss_metric_eval
 
-    return model, optimizer, history
+
+    profiler.eval()
+    return model, optimizer, history, profiler.get_profile()
 
 
-def score_bert_model(model,device,dataset,batchsize,optimizer,lossF):
-
-
+def score_bert_model(model, device, dataset, batchsize, optimizer, lossF):
     with torch.no_grad():
-
         dl_test = DataLoader(dataset, batch_size=batchsize, shuffle=False, pin_memory=True)
         loss_metric = torchmetrics.aggregation.MeanMetric().to(device)
         batchloss_metric_eval = torchmetrics.aggregation.CatMetric().to(device)
@@ -231,4 +258,3 @@ def get_bert_embeddings(entities, bert_model, tokenizer):
     # return numpy because of 'backwards_compatibility'
     # maybe make this optional
     return embeddings.detach().cpu().numpy()
-

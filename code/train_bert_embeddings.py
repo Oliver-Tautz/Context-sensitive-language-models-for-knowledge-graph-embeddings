@@ -28,7 +28,7 @@ import shutil
 from utils import verbprint
 from utils_train import train_bert_embeddings, score_bert_model
 from jrdf2vec_walks_for_bert import generate_walks
-
+from profiler import Profiler
 
 def main(args):
     try:
@@ -122,6 +122,7 @@ def main(args):
         SETTING_BERT_EPOCHS = 10
         SETTING_BERT_BATCHSIZE = 5000
 
+
     verbprint(f"example data: {dataset[0:10]}")
     verbprint("Init Model.")
     # Init tokenizer and config from tinybert
@@ -150,7 +151,6 @@ def main(args):
     encoder_config.max_position_embeddings = SETTING_BERT_MAXLEN
     encoder_config.classifier_dropout = SETTING_BERT_CLASSIFIER_DROPOUT
 
-    print(encoder_config)
 
     del tiny_pretrained
 
@@ -165,14 +165,21 @@ def main(args):
 
     verbprint("Starting training")
 
-    tiny_encoder, optimizer, history = train_bert_embeddings(tiny_encoder, SETTING_BERT_EPOCHS, dataset_simple,
+
+    tiny_encoder, optimizer, history, profile = train_bert_embeddings(tiny_encoder, SETTING_BERT_EPOCHS, dataset_simple,
                                                              dataset_simple_eval, SETTING_BERT_BATCHSIZE,
                                                              torch.optim.Adam, lossF, device)
+
+    print(profile)
+
 
     # Save data
     os.makedirs(SETTING_WORK_FOLDER, exist_ok=True)
     os.makedirs(SETTING_PLOT_FOLDER, exist_ok=True)
     os.makedirs(SETTING_DATA_FOLDER, exist_ok=True)
+
+    pd.DataFrame(profile).to_csv(SETTING_DATA_FOLDER / 'performance_profile.csv')
+
 
     pd.DataFrame(history).to_csv(SETTING_DATA_FOLDER / 'bert_loss_eval.csv')
     pl = pd.DataFrame(history).plot()
