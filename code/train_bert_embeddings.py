@@ -44,13 +44,14 @@ def main(args):
         SETTING_BERT_BATCHSIZE = cfg_parser.getint('TRAIN', 'BERT_BATCHSIZE')
         SETTING_BERT_CLASSIFIER_DROPOUT = cfg_parser.getfloat('TRAIN', 'BERT_CLASSIFIER_DROPOUT')
         SETTING_DEBUG = cfg_parser.getboolean('TRAIN', 'DEBUG')
+        SETTING_TMP_DIR = args.tmp_dir
 
         SETTING_BERT_WALK_USE = cfg_parser.getboolean('TRAIN', 'BERT_WALK_USE')
         SETTING_BERT_WALK_DEPTH = cfg_parser.getint('TRAIN', 'BERT_WALK_DEPTH')
         SETTING_BERT_WALK_COUNT = cfg_parser.getint('TRAIN', 'BERT_WALK_COUNT')
         SETTING_BERT_WALK_GENERATION_MODE = cfg_parser.get('TRAIN', 'BERT_WALK_GENERATION_MODE')
 
-        SETTING_BERT_DATASET_TYPE=cfg_parser.get('TRAIN','BERT_DATASET_TYPE')
+        SETTING_BERT_DATASET_TYPE = cfg_parser.get('TRAIN', 'BERT_DATASET_TYPE')
 
         if SETTING_BERT_WALK_USE:
             SETTING_WORK_FOLDER = Path(
@@ -96,7 +97,7 @@ def main(args):
         walks_name = f'./tmp/{f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}"}'
         walkspath_eval_name = f'./tmp/{f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}"}'
 
-        walks_name = generate_walks('./tmp', SETTING_DATASET_PATH / 'train.nt',
+        walks_name = generate_walks(SETTING_TMP_DIR, SETTING_DATASET_PATH / 'train.nt',
                                     walks_name, 4,
                                     SETTING_BERT_WALK_DEPTH, SETTING_BERT_WALK_COUNT,
                                     SETTING_BERT_WALK_GENERATION_MODE)
@@ -129,9 +130,10 @@ def main(args):
 
     verbprint(f"special tokens: {special_tokens_map}")
 
-    dataset_simple = DatasetSimpleTriple(dataset, special_tokens_map,dataset_type=SETTING_BERT_DATASET_TYPE)
+    dataset_simple = DatasetSimpleTriple(dataset, special_tokens_map, dataset_type=SETTING_BERT_DATASET_TYPE)
     tz = dataset_simple.get_tokenizer()
-    dataset_simple_eval = DatasetSimpleTriple(dataset_eval, special_tokens_map, tokenizer=tz,dataset_type=SETTING_BERT_DATASET_TYPE)
+    dataset_simple_eval = DatasetSimpleTriple(dataset_eval, special_tokens_map, tokenizer=tz,
+                                              dataset_type=SETTING_BERT_DATASET_TYPE)
 
     verbprint(f"example data processed: {dataset_simple[0]}")
 
@@ -194,7 +196,8 @@ def main(args):
     g_test = Graph()
     g_test = g_test.parse(SETTING_DATASET_PATH / 'test.nt', format='nt')
     dataset_most_simple_test = [' '.join(x) for x in g_test]
-    dataset_simple_test = DatasetSimpleTriple(dataset_most_simple_test, special_tokens_map, tokenizer=tz,dataset_type=SETTING_BERT_DATASET_TYPE)
+    dataset_simple_test = DatasetSimpleTriple(dataset_most_simple_test, special_tokens_map, tokenizer=tz,
+                                              dataset_type=SETTING_BERT_DATASET_TYPE)
 
     if SETTING_DEBUG:
         dataset_most_simple_test = dataset_most_simple_test[0:1000]
@@ -223,6 +226,19 @@ if __name__ == '__main__':
                         help="Dont prompt user, ever! Use this for automated scripting etc. Dangerous though! Can overwrite existing files.",
                         action='store_true')
 
+    parser.add_argument("--torch-threads",
+                        help="Set torch.set_num_threads for better performance on multicore machines.", type=int,
+                        default=None)
+
+    parser.add_argument("--tmp-dir",
+                        help="Set temporary directory. Will be cleared!!! Walks and other data will be stored there. The directory should be either empty or non existent. Make sure you have r/w rights!",
+                        type=str,
+                        default="./tmp")
+
     args = parser.parse_args()
+
+    if args.torch_threads:
+        torch.set_num_threads(args.torch_threads)
+
     verbprint("passed args: " + str(args))
     main(args)
