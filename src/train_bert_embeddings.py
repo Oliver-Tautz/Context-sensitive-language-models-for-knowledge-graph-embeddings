@@ -170,7 +170,6 @@ def main(args):
                                                              dataset_simple_eval, SETTING_BERT_BATCHSIZE,
                                                              torch.optim.Adam, lossF, device)
 
-    print(profile)
 
 
     # Save data
@@ -220,7 +219,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    print('HERE!')
+
     parser = argparse.ArgumentParser(
         description="Script to train bert model on a Knowledge graph.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
