@@ -12,7 +12,7 @@ import argparse
 import configparser
 from pathlib import Path
 import os
-
+import json
 import copy
 from collections import defaultdict
 import torchmetrics
@@ -22,7 +22,7 @@ from rdflib import Graph
 
 import torch
 from torch.utils.data import DataLoader
-from utils_data import DatasetSimpleTriple
+from utils_data import DatasetBertTraining
 import pandas as pd
 import shutil
 from utils import verbprint
@@ -131,12 +131,12 @@ def main(args):
 
     verbprint(f"special tokens: {special_tokens_map}")
 
-    dataset_simple = DatasetSimpleTriple(dataset, special_tokens_map, dataset_type=SETTING_BERT_DATASET_TYPE)
-    tz = dataset_simple.get_tokenizer()
-    dataset_simple_eval = DatasetSimpleTriple(dataset_eval, special_tokens_map, tokenizer=tz,
+    dataset = DatasetBertTraining(dataset, special_tokens_map, dataset_type=SETTING_BERT_DATASET_TYPE)
+    tz = dataset.get_tokenizer()
+    dataset_simple_eval = DatasetBertTraining(dataset_eval, special_tokens_map, tokenizer=tz,
                                               dataset_type=SETTING_BERT_DATASET_TYPE)
 
-    verbprint(f"example data processed: {dataset_simple[0]}")
+    verbprint(f"example data processed: {dataset[0]}")
 
     tiny_pretrained = AutoModel.from_pretrained('prajjwal1/bert-tiny')
     tiny_config = tiny_pretrained.config
@@ -166,7 +166,7 @@ def main(args):
     verbprint("Starting training")
 
 
-    tiny_encoder, optimizer, history, profile = train_bert_embeddings(tiny_encoder, SETTING_BERT_EPOCHS, dataset_simple,
+    tiny_encoder, optimizer, history, profile = train_bert_embeddings(tiny_encoder, SETTING_BERT_EPOCHS, dataset,
                                                              dataset_simple_eval, SETTING_BERT_BATCHSIZE,
                                                              torch.optim.Adam, lossF, device)
 
@@ -197,13 +197,16 @@ def main(args):
 
     # Save model
     tiny_encoder.save_pretrained(SETTING_WORK_FOLDER / "model")
-    tz.save(str(SETTING_WORK_FOLDER / "tokenizer.json"))
+    tz.save(str(SETTING_WORK_FOLDER / "tokenizer.json"))\
+
+    with open(SETTING_WORK_FOLDER  /'special_tokens_map.json', 'w', encoding='utf-8') as f:
+        json.dump(special_tokens_map, f, ensure_ascii=False, indent=4)
 
     # compute test score
     g_test = Graph()
     g_test = g_test.parse(SETTING_DATASET_PATH / 'test.nt', format='nt')
     dataset_most_simple_test = [' '.join(x) for x in g_test]
-    dataset_simple_test = DatasetSimpleTriple(dataset_most_simple_test, special_tokens_map, tokenizer=tz,
+    dataset_simple_test = DatasetBertTraining(dataset_most_simple_test, special_tokens_map, tokenizer=tz,
                                               dataset_type=SETTING_BERT_DATASET_TYPE)
 
     if SETTING_DEBUG:

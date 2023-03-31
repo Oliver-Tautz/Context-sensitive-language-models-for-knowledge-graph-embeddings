@@ -9,7 +9,7 @@ from tokenizers.pre_tokenizers import WhitespaceSplit
 from tokenizers.trainers import WordLevelTrainer
 from tokenizers.processors import BertProcessing
 from transformers import BertConfig, BertModel, AutoModel
-
+from rdflib import Graph
 import numpy as np
 
 
@@ -18,7 +18,7 @@ class Dataset11(torch.utils.data.Dataset):
         """
         graph: graph to train on
         vec_mapping: function that returns vectos from URIs
-        entities: iterable of all entities to build fake triples
+        entities_or_relations: iterable of all entities_or_relations to build fake triples
         """
 
         self.entities = vec_mapping(np.array(entities))
@@ -70,7 +70,7 @@ def mask_list(l, mask_token, vocab_size, special_token_ids, type="MLM",typeargs=
         lm_mask(l,mask_token,special_token_ids)
 
 
-class DatasetSimpleTriple(torch.utils.data.Dataset):
+class DatasetBertTraining(torch.utils.data.Dataset):
     def __init__(self, triples, special_tokens_map, tokenizer=None, max_length=128, dataset_type="MLM"):
         """
 
@@ -82,7 +82,7 @@ class DatasetSimpleTriple(torch.utils.data.Dataset):
         TODO LM: Language modeling: predict end/beginning of sentence
         TODO LP: Link prediction
         """
-
+        self.special_tokens_map = special_tokens_map
         self.dataset_type = dataset_type
         if not tokenizer:
             word_level_tokenizer = Tokenizer(WordLevel(unk_token=special_tokens_map['unk_token']))
@@ -98,6 +98,7 @@ class DatasetSimpleTriple(torch.utils.data.Dataset):
             )
         else:
             word_level_tokenizer = tokenizer
+
 
         self.mask_token_id = word_level_tokenizer.token_to_id(special_tokens_map['mask_token'])
         pad_token_id = word_level_tokenizer.token_to_id(special_tokens_map['pad_token'])
@@ -129,8 +130,8 @@ class DatasetSimpleTriple(torch.utils.data.Dataset):
                 i], \
                 self.labels[i]
         elif self.dataset_type == "MASS":
-            return mask_list_mass(self.labels[i], self.mask_token_id,
-                                  self.word_level_tokenizer.get_vocab_size(), self.special_token_ids), \
+            return mask_list(self.labels[i], self.mask_token_id,
+                                  self.word_level_tokenizer.get_vocab_size(), self.special_token_ids,type='MASS'), \
             self.attention_masks[i], \
                 self.labels[i]
 
@@ -141,6 +142,8 @@ class DatasetSimpleTriple(torch.utils.data.Dataset):
 
     def get_tokenizer(self):
         return self.word_level_tokenizer
+    def get_special_tokens_map(self):
+        return self.special_tokens_map
 
 
 def get_1_1_dataset(graph, entities, entity_vec_mapping, corrupt='random'):
@@ -248,7 +251,8 @@ def get_bert_simple_dataset(graph):
 
     del (tz)
 
-    dataset = DatasetSimpleTriple(dataset_most_simple, special_tokens_map)
+    dataset = DatasetBertTraining(dataset_most_simple, special_tokens_map)
     tz = dataset.get_tokenizer()
 
     return dataset, tz
+

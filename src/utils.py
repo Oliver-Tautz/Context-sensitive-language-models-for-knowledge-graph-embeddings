@@ -17,6 +17,12 @@ def pickle_save(obj, filename):
     pickle.dump(obj, file)
     file.close()
 
+def batch(iterable, n=1):
+    # great! taken from https://stackoverflow.com/questions/8290397/how-to-split-an-iterable-in-constant-size-chunks
+    l = len(iterable)
+    for ndx in range(0, l, n):
+        yield iterable[ndx:min(ndx + n, l)]
+
 
 def choose_many_multiple(arrs, n):
     l = len(arrs[0])
@@ -49,7 +55,18 @@ def map_keyed_vectors(word_vectors, iterable):
 def verbprint(str):
     if VERBOSE:
         print(str)
+def merge_lists(l0,l1):
+    l_new = []
+    while l0 and l1:
+        l_new.append(l0.pop(0))
+        l_new.append(l1.pop(0))
 
+    if l0:
+        l_new = l_new+l0
+    else:
+        l_new = l_new+l1
+
+    return l_new
 class PerfTimer():
     def __init__(self):
         self.stats_to_track = defaultdict(list)
@@ -74,3 +91,4 @@ class PerfTimer():
 
     def stats_f(self, f):
         return {key: f(value) for key, value in self.stats().items()}
+

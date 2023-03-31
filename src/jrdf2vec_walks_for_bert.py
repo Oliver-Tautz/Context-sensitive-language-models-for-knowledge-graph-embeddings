@@ -13,4 +13,4 @@ if __name__ == "__main__":
 
     # test some walks
     for d in [3,4,5,6,7]:
-        generate_walks("/tmp/walks","FB15k-237/train.nt","fb15k-237",12,d,100)
+        generate_walks("/tmp/walks","FB15k-237/train.nt","fb15k-237",12,d,10)

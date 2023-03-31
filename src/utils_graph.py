@@ -8,7 +8,7 @@ from tqdm import tqdm
 from utils import choose, PerfTimer
 from sklearn.utils.extmath import cartesian
 import torch
-
+from rdflib import Graph
 
 
 
@@ -103,7 +103,33 @@ def clean_graph(graph, wv):
     return no_removed
 
 
-def parse_rdflib_to_torch(graph,word_vec_mapping):
+
+def parse_kg(path):
+    graph = Graph()
+    graph.parse(path)
+    entities = get_entities([graph])
+
+    entities = np.array(entities)
+    entities = dict(zip(entities, range(len(entities))))
+
+    predicates = np.array(list(set(graph.predicates())))
+    predicates = dict(zip(predicates, range(len(predicates))))
+
+    edges = []
+    predicate_ix = []
+
+    for s, p, o in np.array(graph):
+        try:
+            edge = (entities[s], entities[o])
+            edges.append(edge)
+            predicate_ix.append(predicates[p])
+        except:
+            print(f"Unknown entities or predicates encountered! ({s},{p},{o})")
+    # return numpy arrays. Maybe change to tensors?
+    return np.array(list(entities.keys())), np.array(list(predicates.keys())), np.array(edges), np.array(predicate_ix)
+
+
+def parse_kg_to_torch(graph,word_vec_mapping):
     entities = get_entities([graph])
 
     entities = np.array(entities)
