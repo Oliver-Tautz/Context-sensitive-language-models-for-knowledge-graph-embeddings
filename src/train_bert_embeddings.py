@@ -179,7 +179,7 @@ def main(args):
 
     pd.DataFrame(profile).to_csv(SETTING_DATA_FOLDER / 'performance_profile.csv')
 
-    loss_df = {'loss': history['loss'], 'loss_eval': history['loss_eval']}
+    loss_df = pd.DataFrame({'loss': history['loss'], 'loss_eval': history['loss_eval']})
 
     loss_df.to_csv(SETTING_DATA_FOLDER / 'bert_loss_eval.csv')
 
