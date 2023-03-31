@@ -9,12 +9,6 @@ from tqdm import tqdm, trange
 import json
 
 
-def get_embeddings(entities, bert_model, tokenizer):
-    entities = [tokenizer.encode(x) for x in np.array(entities)]
-    embeddings = bert_model(torch.tensor(entities))
-    embeddings = embeddings['last_hidden_state'][:, 1]
-    return embeddings
-
 
 class BertKGEmb():
     def __init__(self, path, datapath=None, depth=3):
