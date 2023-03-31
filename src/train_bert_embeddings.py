@@ -179,9 +179,11 @@ def main(args):
 
     pd.DataFrame(profile).to_csv(SETTING_DATA_FOLDER / 'performance_profile.csv')
 
+    loss_df = {'loss': history['loss'], 'loss_eval': history['loss_eval']}
 
-    pd.DataFrame(history).to_csv(SETTING_DATA_FOLDER / 'bert_loss_eval.csv')
-    pl = pd.DataFrame(history).plot()
+    loss_df.to_csv(SETTING_DATA_FOLDER / 'bert_loss_eval.csv')
+
+    pl = loss_df.plot()
     pl.figure.savefig(SETTING_PLOT_FOLDER / 'loss_eval_loss.pdf')
 
     pd.DataFrame(history['batchloss_metric'].compute().detach().cpu()).to_csv(
