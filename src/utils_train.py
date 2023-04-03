@@ -103,11 +103,15 @@ def fit_1_1(model, graph, word_vec_mapping, batch_size, entities, metrics=None, 
     return model, optimizer, history
 
 
-def train_bert_embeddings(model, epochs, dataset, dataset_eval, batchsize, optimizer, lossF, device):
+def train_bert_embeddings(model, epochs, dataset, dataset_eval, batchsize, optimizer, lossF, device, folder,
+                          stop_early_patience=5, stop_early_delta=0.1):
     """
     Train a model on a dataset_file.
 
     """
+
+    early_stopper = EarlyStopper(stop_early_patience, stop_early_delta)
+    best_eval_loss = None
 
     dl = DataLoader(dataset, batch_size=batchsize, shuffle=True, pin_memory=True)
     dl_eval = DataLoader(dataset_eval, batch_size=batchsize, shuffle=False, pin_memory=True)
@@ -122,7 +126,7 @@ def train_bert_embeddings(model, epochs, dataset, dataset_eval, batchsize, optim
     verbprint(f"cuda_model: {next(model.parameters()).is_cuda}")
     verbprint("Starting training")
 
-    profiler = Profiler(['batch', 'device', 'forward','loss' ,'backward', 'metrics', 'eval'])
+    profiler = Profiler(['batch', 'device', 'forward', 'loss', 'backward', 'metrics', 'eval'])
 
     for ep in trange(epochs):
         for inputs, batch_mask, batch_labels in dl:
@@ -178,7 +182,6 @@ def train_bert_embeddings(model, epochs, dataset, dataset_eval, batchsize, optim
         loss_metric.reset()
         profiler.timer_stop('metrics')
 
-
         profiler.timer_start('eval')
         with torch.no_grad():
             model.eval()
@@ -205,13 +208,26 @@ def train_bert_embeddings(model, epochs, dataset, dataset_eval, batchsize, optim
                 loss_metric(loss.detach())
                 batchloss_metric_eval(loss.detach())
 
-            history['loss_eval'].append(loss_metric.compute().detach().item())
+            eval_loss = loss_metric.compute().detach().item()
+            if not best_eval_loss:
+                best_eval_loss = eval_loss
+            else:
+                if eval_loss < best_eval_loss:
+                    best_eval_loss = eval_loss
+                    model.save_pretrained(folder / "model_best_eval")
+
+
+            history['loss_eval'].append(eval_loss)
+
             loss_metric.reset()
+
         profiler.timer_stop('eval')
+        early_stopper.measure(eval_loss)
+        if early_stopper.should_stop():
+            break
 
     history['batchloss_metric'] = batchloss_metric
     history['batchloss_metric_eval'] = batchloss_metric_eval
-
 
     profiler.eval()
     return model, optimizer, history, profiler.get_profile()
@@ -248,6 +264,37 @@ def score_bert_model(model, device, dataset, batchsize, optimizer, lossF):
             loss_metric(loss.detach())
             batchloss_metric_eval(loss.detach())
     return loss_metric.compute().item()
+
+
+class EarlyStopper():
+
+    def __init__(self, patience, delta, type='basic'):
+        self.patience = patience
+        self.delta = delta
+        self.counter = 0
+        self.smallest_metric = None
+        self.stop = False
+
+    def measure(self, metric):
+        print('patience:',self.counter)
+        if not self.smallest_metric:
+            self.smallest_metric = metric
+        else:
+            delta = self.smallest_metric - metric
+            if delta > self.delta:
+                counter = 0
+                self.smallest_metric = metric
+            else:
+                if self.counter >= self.patience:
+                    self.stop = True
+                else:
+                    self.counter += 1
+
+    def should_stop(self):
+        if self.stop:
+            return True
+        else:
+            return False
 
 
 def get_bert_embeddings(entities, bert_model, tokenizer):

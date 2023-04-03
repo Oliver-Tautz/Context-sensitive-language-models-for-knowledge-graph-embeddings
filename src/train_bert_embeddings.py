@@ -30,6 +30,7 @@ from utils_train import train_bert_embeddings, score_bert_model
 from jrdf2vec_walks_for_bert import generate_walks
 from profiler import Profiler
 
+
 def main(args):
     try:
 
@@ -52,6 +53,9 @@ def main(args):
         SETTING_BERT_WALK_GENERATION_MODE = cfg_parser.get('TRAIN', 'BERT_WALK_GENERATION_MODE')
 
         SETTING_BERT_DATASET_TYPE = cfg_parser.get('TRAIN', 'BERT_DATASET_TYPE')
+
+        SETTING_STOP_EARLY = cfg_parser.getint('TRAIN', 'BERT_EARLY_STOPPING_PATIENCE')
+        SETTINGS_STOP_EARLY_DELTA = cfg_parser.getfloat('TRAIN', 'BERT_EARLY_STOPPING_DELTA')
 
         if SETTING_BERT_WALK_USE:
             SETTING_WORK_FOLDER = Path(
@@ -122,7 +126,6 @@ def main(args):
         SETTING_BERT_EPOCHS = 10
         SETTING_BERT_BATCHSIZE = 5000
 
-
     verbprint(f"example data: {dataset[0:10]}")
     verbprint("Init Model.")
     # Init tokenizer and config from tinybert
@@ -151,7 +154,6 @@ def main(args):
     encoder_config.max_position_embeddings = SETTING_BERT_MAXLEN
     encoder_config.classifier_dropout = SETTING_BERT_CLASSIFIER_DROPOUT
 
-
     del tiny_pretrained
 
     #
@@ -165,12 +167,12 @@ def main(args):
 
     verbprint("Starting training")
 
-
     tiny_encoder, optimizer, history, profile = train_bert_embeddings(tiny_encoder, SETTING_BERT_EPOCHS, dataset,
-                                                             dataset_simple_eval, SETTING_BERT_BATCHSIZE,
-                                                             torch.optim.Adam, lossF, device)
-
-
+                                                                      dataset_simple_eval, SETTING_BERT_BATCHSIZE,
+                                                                      torch.optim.Adam, lossF, device,
+                                                                      SETTING_WORK_FOLDER,
+                                                                      stop_early_patience=SETTING_STOP_EARLY,
+                                                                      stop_early_delta=SETTINGS_STOP_EARLY_DELTA)
 
     # Save data
     os.makedirs(SETTING_WORK_FOLDER, exist_ok=True)
@@ -198,9 +200,9 @@ def main(args):
 
     # Save model
     tiny_encoder.save_pretrained(SETTING_WORK_FOLDER / "model")
-    tz.save(str(SETTING_WORK_FOLDER / "tokenizer.json"))\
+    tz.save(str(SETTING_WORK_FOLDER / "tokenizer.json"))
 
-    with open(SETTING_WORK_FOLDER  /'special_tokens_map.json', 'w', encoding='utf-8') as f:
+    with open(SETTING_WORK_FOLDER / 'special_tokens_map.json', 'w', encoding='utf-8') as f:
         json.dump(special_tokens_map, f, ensure_ascii=False, indent=4)
 
     # compute test score
