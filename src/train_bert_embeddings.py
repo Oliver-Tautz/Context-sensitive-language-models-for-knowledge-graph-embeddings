@@ -102,7 +102,7 @@ def main(args):
                                     SETTING_BERT_WALK_DEPTH, SETTING_BERT_WALK_COUNT,
                                     SETTING_BERT_WALK_GENERATION_MODE)
 
-        walkspath_eval_name = generate_walks('./tmp', SETTING_DATASET_PATH / 'train.nt',
+        walkspath_eval_name = generate_walks('./tmp', SETTING_DATASET_PATH / 'valid.nt',
                                              walkspath_eval_name, 4,
                                              SETTING_BERT_WALK_DEPTH, SETTING_BERT_WALK_COUNT,
                                              SETTING_BERT_WALK_GENERATION_MODE)
