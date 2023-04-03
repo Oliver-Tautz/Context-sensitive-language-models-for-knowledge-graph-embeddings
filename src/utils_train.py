@@ -282,7 +282,7 @@ class EarlyStopper():
         else:
             delta = self.smallest_metric - metric
             if delta > self.delta:
-                counter = 0
+                self.counter = 0
                 self.smallest_metric = metric
             else:
                 if self.counter >= self.patience:
