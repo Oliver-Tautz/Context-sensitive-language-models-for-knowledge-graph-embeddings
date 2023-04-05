@@ -3,13 +3,15 @@ import pickle
 from time import perf_counter
 from collections import defaultdict
 import numpy as np
+
+
 VERBOSE=1
 
 def run_str(string,silent = False):
     if not silent:
-        subprocess.run(string.split())
+        return subprocess.run(string.split())
     else:
-        subprocess.run(string.split(),capture_output=True)
+        return subprocess.run(string.split(),capture_output=True)
 
 
 def pickle_save(obj, filename):

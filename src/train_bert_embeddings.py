@@ -41,7 +41,7 @@ def main(args):
         SETTING_VECTOR_SIZE = cfg_parser.getint('TRAIN', 'VECTOR_SIZE')
         SETTING_BERT_EPOCHS = cfg_parser.getint('TRAIN', 'BERT_EPOCHS')
         SETTING_BERT_NAME = cfg_parser.get('TRAIN', 'BERT_NAME')
-        SETTING_BERT_MAXLEN = cfg_parser.getint('TRAIN', 'BERT_MAXLEN')
+
         SETTING_BERT_BATCHSIZE = cfg_parser.getint('TRAIN', 'BERT_BATCHSIZE')
         SETTING_BERT_CLASSIFIER_DROPOUT = cfg_parser.getfloat('TRAIN', 'BERT_CLASSIFIER_DROPOUT')
         SETTING_DEBUG = cfg_parser.getboolean('TRAIN', 'DEBUG')
@@ -60,7 +60,12 @@ def main(args):
         if SETTING_BERT_WALK_USE:
             SETTING_WORK_FOLDER = Path(
                 f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}_walks_d={SETTING_BERT_WALK_DEPTH}_w={SETTING_BERT_WALK_COUNT}_g={SETTING_BERT_WALK_GENERATION_MODE}_dataset={SETTING_BERT_DATASET_TYPE}")
+
+            # depth*2 + entity + CLS + SEP
+            SETTING_BERT_MAXLEN = SETTING_BERT_WALK_DEPTH*2+3
         else:
+            # triple, so we have cls,e,r,e,sep
+            SETTING_BERT_MAXLEN = 5
             SETTING_WORK_FOLDER = Path(f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}")
 
         SETTING_PLOT_FOLDER = SETTING_WORK_FOLDER / 'plot'
@@ -98,15 +103,15 @@ def main(args):
         dataset_eval = [' '.join(x) for x in g_val]
     else:
 
-        walks_name = f'./tmp/{f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}"}'
-        walkspath_eval_name = f'./tmp/{f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}"}_eval'
+        walks_name = f'{f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}"}'
+        walkspath_eval_name = f'{f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}"}_eval'
 
         walks_name = generate_walks(SETTING_TMP_DIR, SETTING_DATASET_PATH / 'train.nt',
                                     walks_name, 4,
                                     SETTING_BERT_WALK_DEPTH, SETTING_BERT_WALK_COUNT,
                                     SETTING_BERT_WALK_GENERATION_MODE)
 
-        walkspath_eval_name = generate_walks('./tmp', SETTING_DATASET_PATH / 'valid.nt',
+        walkspath_eval_name = generate_walks(SETTING_TMP_DIR, SETTING_DATASET_PATH / 'valid.nt',
                                              walkspath_eval_name, 4,
                                              SETTING_BERT_WALK_DEPTH, SETTING_BERT_WALK_COUNT,
                                              SETTING_BERT_WALK_GENERATION_MODE)
