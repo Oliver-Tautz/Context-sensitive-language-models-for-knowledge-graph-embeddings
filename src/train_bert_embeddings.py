@@ -99,7 +99,7 @@ def main(args):
     else:
 
         walks_name = f'./tmp/{f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}"}'
-        walkspath_eval_name = f'./tmp/{f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}"}'
+        walkspath_eval_name = f'./tmp/{f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}"}_eval'
 
         walks_name = generate_walks(SETTING_TMP_DIR, SETTING_DATASET_PATH / 'train.nt',
                                     walks_name, 4,
@@ -110,7 +110,8 @@ def main(args):
                                              walkspath_eval_name, 4,
                                              SETTING_BERT_WALK_DEPTH, SETTING_BERT_WALK_COUNT,
                                              SETTING_BERT_WALK_GENERATION_MODE)
-
+        print(walks_name)
+        print(walkspath_eval_name)
         # Warning, this reads lines with \n in it. Whitespace splitting takes care of it in the tokenizer.
         walkspath_file = open(walks_name, 'r')
         dataset = walkspath_file.readlines()
@@ -167,6 +168,10 @@ def main(args):
 
     verbprint("Starting training")
 
+    os.makedirs(SETTING_WORK_FOLDER, exist_ok=True)
+    os.makedirs(SETTING_PLOT_FOLDER, exist_ok=True)
+    os.makedirs(SETTING_DATA_FOLDER, exist_ok=True)
+
     tiny_encoder, optimizer, history, profile = train_bert_embeddings(tiny_encoder, SETTING_BERT_EPOCHS, dataset,
                                                                       dataset_simple_eval, SETTING_BERT_BATCHSIZE,
                                                                       torch.optim.Adam, lossF, device,
@@ -175,9 +180,6 @@ def main(args):
                                                                       stop_early_delta=SETTINGS_STOP_EARLY_DELTA)
 
     # Save data
-    os.makedirs(SETTING_WORK_FOLDER, exist_ok=True)
-    os.makedirs(SETTING_PLOT_FOLDER, exist_ok=True)
-    os.makedirs(SETTING_DATA_FOLDER, exist_ok=True)
 
     pd.DataFrame(profile).to_csv(SETTING_DATA_FOLDER / 'performance_profile.csv')
 

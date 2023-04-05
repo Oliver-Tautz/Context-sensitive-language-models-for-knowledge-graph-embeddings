@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from transformers import PreTrainedTokenizerFast, AutoModel
 from pathlib import Path
-from utils import batch, merge_lists
+from utils import batch, merge_lists, run_str
 from utils_graph import parse_kg
 from random import randint
 from tqdm import tqdm, trange
@@ -11,21 +11,27 @@ import json
 
 
 class BertKGEmb():
-    def __init__(self, path, datapath=None, depth=3):
+    def __init__(self, path, datapath=None, depth=3,use_best_eval = False,device = torch.device('cpu'),mode=None):
         self.depth = depth
         path = Path(path)
+        self.mode=mode
         with open(path / 'special_tokens_map.json', 'r') as file:
             self.special_tokens_map = json.load(file)
 
         try:
             tz = PreTrainedTokenizerFast(tokenizer_file=str(path / "tokenizer.json"),
                                          pad_token=self.special_tokens_map['pad_token'])
-            model = AutoModel.from_pretrained(path / "model")
+            if not use_best_eval:
+                model = AutoModel.from_pretrained(path / "model")
+            else:
+                model = AutoModel.from_pretrained(path / "model_best_eval")
+
         except Exception as e:
             print("Cant load Bert model!")
             print('Exception was: ', e)
             exit(-1)
 
+        model = model.to(device)
         self.model = model
         self.tz = tz
 
@@ -33,6 +39,13 @@ class BertKGEmb():
         self.pad_token_id = self.tz.convert_tokens_to_ids(self.special_tokens_map['pad_token'])
 
         if datapath:
+            if not Path(datapath).isfile():
+                # download dataset_file
+                run_str("wget  -q -nc --no-check-certificate https://docs.google.com/uc?export=download&id=1pBnn8bjI2VkVvBR33DnvpeyocfDhMCFA -O fb15k-237_nt.zip")
+
+                # unzip dataset_file
+                run_str("unzip -n fb15k-237_nt.zip")
+                datapath = "./FB15K-237/train.nt"
 
             # get representation of graph
             entities, predicates, edges, edge_type = parse_kg(datapath)
@@ -75,8 +88,11 @@ class BertKGEmb():
         single :: use [CLS],ent,[SEP] as input for each entity/relation.
 
         """
+        if self.mode:
+            mode = self.mode
 
         def bert_process(input, column=1):
+
 
             # transformers padding works now :)
             # pad manually on string level... this is pretty bad practice.

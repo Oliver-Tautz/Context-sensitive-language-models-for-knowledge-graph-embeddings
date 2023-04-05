@@ -220,6 +220,8 @@ def train_bert_embeddings(model, epochs, dataset, dataset_eval, batchsize, optim
             history['loss_eval'].append(eval_loss)
 
             loss_metric.reset()
+        print('current_loss=',history['loss'][-1],'\t', 'eval_loss=',history['loss_eval'][-1])
+
 
         profiler.timer_stop('eval')
         early_stopper.measure(eval_loss)
@@ -271,7 +273,7 @@ class EarlyStopper():
     def __init__(self, patience, delta, type='basic'):
         self.patience = patience
         self.delta = delta
-        self.counter = 0
+        self.counter = 1
         self.smallest_metric = None
         self.stop = False
 
@@ -282,7 +284,7 @@ class EarlyStopper():
         else:
             delta = self.smallest_metric - metric
             if delta > self.delta:
-                self.counter = 0
+                self.counter = 1
                 self.smallest_metric = metric
             else:
                 if self.counter >= self.patience:
