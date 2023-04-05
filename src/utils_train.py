@@ -293,7 +293,10 @@ class EarlyStopper():
                     self.counter += 1
 
     def should_stop(self):
-        if self.stop:
+        if not self.patience < 0:
+            return False
+
+        elif self.stop:
             return True
         else:
             return False
