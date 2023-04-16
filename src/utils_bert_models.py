@@ -66,6 +66,7 @@ class BertKGEmb():
             walks = self.__merge_walks(walks_entities, walks_rels)
 
             self.entity_walks = dict(zip(entities, walks))
+            print(self.entity_walks.keys())
 
             # generate walks for all relations.
             walks_entities = []
