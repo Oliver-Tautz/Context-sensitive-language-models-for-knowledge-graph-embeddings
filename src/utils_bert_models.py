@@ -39,7 +39,7 @@ class BertKGEmb():
         self.pad_token_id = self.tz.convert_tokens_to_ids(self.special_tokens_map['pad_token'])
 
         if datapath:
-            if not Path(datapath).isfile():
+            if not Path(datapath).is_file():
                 # download dataset_file
                 run_str("wget  -q -nc --no-check-certificate https://docs.google.com/uc?export=download&id=1pBnn8bjI2VkVvBR33DnvpeyocfDhMCFA -O fb15k-237_nt.zip")
 
