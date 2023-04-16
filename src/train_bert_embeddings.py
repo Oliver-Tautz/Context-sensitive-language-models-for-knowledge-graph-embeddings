@@ -16,7 +16,7 @@ import json
 import copy
 from collections import defaultdict
 import torchmetrics
-
+import math
 from tqdm import tqdm, trange
 from rdflib import Graph
 
@@ -29,7 +29,7 @@ from utils import verbprint
 from utils_train import train_bert_embeddings, score_bert_model
 from jrdf2vec_walks_for_bert import generate_walks
 from profiler import Profiler
-
+from sklearn.model_selection import train_test_split
 
 def main(args):
     try:
@@ -102,29 +102,31 @@ def main(args):
         dataset = [' '.join(x) for x in g_train]
         dataset_eval = [' '.join(x) for x in g_val]
     else:
-
+        # use walks
+        # train/test split from train walks as eval graph is not connected.
         walks_name = f'{f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}"}'
-        walkspath_eval_name = f'{f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}"}_eval'
+
 
         walks_name = generate_walks(SETTING_TMP_DIR, SETTING_DATASET_PATH / 'train.nt',
                                     walks_name, 4,
                                     SETTING_BERT_WALK_DEPTH, SETTING_BERT_WALK_COUNT,
                                     SETTING_BERT_WALK_GENERATION_MODE)
 
-        walkspath_eval_name = generate_walks(SETTING_TMP_DIR, SETTING_DATASET_PATH / 'valid.nt',
-                                             walkspath_eval_name, 4,
-                                             SETTING_BERT_WALK_DEPTH, SETTING_BERT_WALK_COUNT,
-                                             SETTING_BERT_WALK_GENERATION_MODE)
-        print(walks_name)
-        print(walkspath_eval_name)
+
+
         # Warning, this reads lines with \n in it. Whitespace splitting takes care of it in the tokenizer.
         walkspath_file = open(walks_name, 'r')
         dataset = walkspath_file.readlines()
         walkspath_file.close()
 
-        walkspath_eval_file = open(walkspath_eval_name, 'r')
-        dataset_eval = walkspath_eval_file.readlines()
-        walkspath_eval_file.close()
+        def percent_length(dataset,percent):
+            return math.floor(percent * len(dataset))
+        print(len(dataset))
+        dataset, dataset_eval = train_test_split(dataset,train_size=0.75,test_size=0.25,random_state=328)
+
+
+        print(len(dataset),len(dataset_eval))
+
 
     if SETTING_DEBUG:
         dataset = dataset[0:10000]

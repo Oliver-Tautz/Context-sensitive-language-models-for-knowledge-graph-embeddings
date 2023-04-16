@@ -269,33 +269,54 @@ def score_bert_model(model, device, dataset, batchsize, optimizer, lossF):
 
 
 class EarlyStopper():
+    #TODO: Add min epochs
+    # look into ray tune ?
 
-    def __init__(self, patience, delta, type='basic'):
+    """
+    Set patience <0 to ignore early stopping.
+    """
+    def __init__(self, patience, delta, type='basic',min_epochs=10):
         self.patience = patience
         self.delta = delta
         self.counter = 1
-        self.smallest_metric = None
+        self.min_metric = None
         self.stop = False
+        self.min_epochs = min_epochs
+        self.log = {'counter':[],'min_epochs':[],'min_metric':[],'metric':[],'stop':[]}
+
+    def __log__(self,metric):
+        self.log['counter'].append(self.counter)
+        self.log['min_epochs'].append(self.min_epochs)
+        self.log['min_metric'].append(self.min_metric)
+        self.log['metric'].append(metric)
+        self.log['stop'].append(self.stop)
+
 
     def measure(self, metric):
-        print('patience:',self.counter)
-        if not self.smallest_metric:
-            self.smallest_metric = metric
+        if self.min_epochs> 0:
+            self.min_epochs -=1
         else:
-            delta = self.smallest_metric - metric
-            if delta > self.delta:
-                self.counter = 1
-                self.smallest_metric = metric
+            if not self.min_metric:
+                self.min_metric = metric
+
             else:
-                if self.counter >= self.patience:
-                    self.stop = True
+                delta = self.min_metric - metric
+                print('delta:',delta, self.delta)
+                if delta > self.delta:
+                    self.counter = 1
+                    self.min_metric = metric
                 else:
-                    self.counter += 1
+                    print('++')
+                    if self.counter >= self.patience:
+                        self.stop = True
+                    else:
+                        self.counter += 1
+                        print('++')
+        self.__log__(metric)
 
     def should_stop(self):
         if self.patience < 0:
             return False
-
         elif self.stop:
             return True
         else:
