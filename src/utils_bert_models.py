@@ -41,7 +41,7 @@ class BertKGEmb():
         if datapath:
             if not Path(datapath).is_file():
                 # download dataset_file
-                run_str("wget  -q -nc --no-check-certificate https://docs.google.com/uc?export=download&id=1pBnn8bjI2VkVvBR33DnvpeyocfDhMCFA -O fb15k-237_nt.zip")
+                run_str("wget  -q -nc --no-check-certificate \"https://docs.google.com/uc?export=download&id=1pBnn8bjI2VkVvBR33DnvpeyocfDhMCFA\" -O fb15k-237_nt.zip")
 
                 # unzip dataset_file
                 run_str("unzip -n fb15k-237_nt.zip")
