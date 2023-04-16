@@ -30,7 +30,7 @@ class BertKGEmb():
             print("Cant load Bert model!")
             print('Exception was: ', e)
             exit(-1)
-
+        self.device = device
         model = model.to(device)
         self.model = model
         self.tz = tz
@@ -109,8 +109,8 @@ class BertKGEmb():
             ids = input['input_ids']
             masks = input['attention_mask']
 
-            ids = batch(ids, batchsize)
-            masks = batch(masks, batchsize)
+            ids = batch(ids.to(self.device), batchsize)
+            masks = batch(masks.to(self.device), batchsize)
 
             batches = []
             for i, m in zip(ids, masks):
