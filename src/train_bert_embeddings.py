@@ -92,6 +92,7 @@ def main(args):
     verbprint("Loading Dataset")
 
     if not SETTING_BERT_WALK_USE:
+        print('using triples!')
         g_train = Graph()
         g_val = Graph()
 
@@ -122,16 +123,17 @@ def main(args):
         def percent_length(dataset,percent):
             return math.floor(percent * len(dataset))
         print(len(dataset))
-        dataset, dataset_eval = train_test_split(dataset,train_size=0.75,test_size=0.25,random_state=328)
+        dataset_eval, dataset = train_test_split(dataset,train_size=0.75,test_size=0.25,random_state=328)
+
 
 
         print(len(dataset),len(dataset_eval))
 
 
     if SETTING_DEBUG:
-        dataset = dataset[0:10000]
-        dataset_eval = dataset_eval[0:1000]
-        SETTING_BERT_EPOCHS = 10
+        dataset = dataset[0:1000]
+        dataset_eval = dataset_eval[0:100]
+        #SETTING_BERT_EPOCHS = 10
         SETTING_BERT_BATCHSIZE = 5000
 
     verbprint(f"example data: {dataset[0:10]}")
@@ -144,7 +146,7 @@ def main(args):
 
     dataset = DatasetBertTraining(dataset, special_tokens_map, dataset_type=SETTING_BERT_DATASET_TYPE)
     tz = dataset.get_tokenizer()
-    dataset_simple_eval = DatasetBertTraining(dataset_eval, special_tokens_map, tokenizer=tz,
+    dataset_eval = DatasetBertTraining(dataset_eval, special_tokens_map, tokenizer=tz,
                                               dataset_type=SETTING_BERT_DATASET_TYPE)
 
     verbprint(f"example data processed: {dataset[0]}")
@@ -180,7 +182,7 @@ def main(args):
     os.makedirs(SETTING_DATA_FOLDER, exist_ok=True)
 
     tiny_encoder, optimizer, history, profile = train_bert_embeddings(tiny_encoder, SETTING_BERT_EPOCHS, dataset,
-                                                                      dataset_simple_eval, SETTING_BERT_BATCHSIZE,
+                                                                      dataset_eval, SETTING_BERT_BATCHSIZE,
                                                                       torch.optim.Adam, lossF, device,
                                                                       SETTING_WORK_FOLDER,
                                                                       stop_early_patience=SETTING_STOP_EARLY,
@@ -217,14 +219,17 @@ def main(args):
     # compute test score
     g_test = Graph()
     g_test = g_test.parse(SETTING_DATASET_PATH / 'test.nt', format='nt')
-    dataset_most_simple_test = [' '.join(x) for x in g_test]
-    dataset_simple_test = DatasetBertTraining(dataset_most_simple_test, special_tokens_map, tokenizer=tz,
-                                              dataset_type=SETTING_BERT_DATASET_TYPE)
+    dataset_test = [' '.join(x) for x in g_test]
 
     if SETTING_DEBUG:
-        dataset_most_simple_test = dataset_most_simple_test[0:1000]
+        dataset_test = dataset_test[0:1000]
 
-    testscore = score_bert_model(tiny_encoder, device, dataset_simple_test, SETTING_BERT_BATCHSIZE, optimizer, lossF)
+    dataset_test = DatasetBertTraining(dataset_test, special_tokens_map, tokenizer=tz,
+                                              dataset_type=SETTING_BERT_DATASET_TYPE)
+
+
+
+    testscore = score_bert_model(tiny_encoder, device, dataset_test, SETTING_BERT_BATCHSIZE, optimizer, lossF)
     testscorefile = open(SETTING_DATA_FOLDER / 'testscore.txt', mode='w')
     testscorefile.write(str(testscore))
     testscorefile.close()

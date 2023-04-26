@@ -301,12 +301,10 @@ class EarlyStopper():
 
             else:
                 delta = self.min_metric - metric
-                print('delta:',delta, self.delta)
                 if delta > self.delta:
                     self.counter = 1
                     self.min_metric = metric
                 else:
-                    print('++')
                     if self.counter >= self.patience:
                         self.stop = True
                     else:

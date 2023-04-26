@@ -235,8 +235,8 @@ class BertKGEmb():
 
 
 if __name__ == "__main__":
-    datapath = '/home/olli/gits/Better_Knowledge_Graph_Embeddings/src/FB15k-237/train.nt'
-    datapath_test = '/home/olli/gits/Better_Knowledge_Graph_Embeddings/src/FB15k-237/test_1000.nt'
+    datapath = '/home/olli/gits/Better_Knowledge_Graph_Embeddings/src/FB15K-237/train.nt'
+    datapath_test = '/home/olli/gits/Better_Knowledge_Graph_Embeddings/src/FB15K-237/test_1000.nt'
 
     # create model from checkpoint with integrated dataset
     bert_embeddings = BertKGEmb(
