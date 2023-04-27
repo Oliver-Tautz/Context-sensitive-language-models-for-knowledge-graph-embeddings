@@ -7,7 +7,7 @@ from utils_graph import parse_kg
 from random import randint
 from tqdm import tqdm, trange
 import json
-
+from collections import defaultdict
 
 
 class BertKGEmb():

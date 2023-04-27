@@ -57,6 +57,9 @@ def main(args):
         SETTING_STOP_EARLY = cfg_parser.getint('TRAIN', 'BERT_EARLY_STOPPING_PATIENCE')
         SETTINGS_STOP_EARLY_DELTA = cfg_parser.getfloat('TRAIN', 'BERT_EARLY_STOPPING_DELTA')
 
+        SETTING_BERT_MASK_CHANCE= 0.33
+        SETTING_BERT_MASK_TOKEN_CHANCE = 1.0
+
         if SETTING_BERT_WALK_USE:
             SETTING_WORK_FOLDER = Path(
                 f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}_walks_d={SETTING_BERT_WALK_DEPTH}_w={SETTING_BERT_WALK_COUNT}_g={SETTING_BERT_WALK_GENERATION_MODE}_dataset={SETTING_BERT_DATASET_TYPE}")
@@ -144,10 +147,10 @@ def main(args):
 
     verbprint(f"special tokens: {special_tokens_map}")
 
-    dataset = DatasetBertTraining(dataset, special_tokens_map, dataset_type=SETTING_BERT_DATASET_TYPE)
+    dataset = DatasetBertTraining(dataset, special_tokens_map, dataset_type=SETTING_BERT_DATASET_TYPE,mask_chance=SETTING_BERT_MASK_CHANCE,mask_token_chance=SETTING_BERT_MASK_TOKEN_CHANCE)
     tz = dataset.get_tokenizer()
     dataset_eval = DatasetBertTraining(dataset_eval, special_tokens_map, tokenizer=tz,
-                                              dataset_type=SETTING_BERT_DATASET_TYPE)
+                                              dataset_type=SETTING_BERT_DATASET_TYPE,mask_chance=SETTING_BERT_MASK_CHANCE,mask_token_chance=SETTING_BERT_MASK_TOKEN_CHANCE)
 
     verbprint(f"example data processed: {dataset[0]}")
 
@@ -225,7 +228,7 @@ def main(args):
         dataset_test = dataset_test[0:1000]
 
     dataset_test = DatasetBertTraining(dataset_test, special_tokens_map, tokenizer=tz,
-                                              dataset_type=SETTING_BERT_DATASET_TYPE)
+                                              dataset_type=SETTING_BERT_DATASET_TYPE,mask_chance=SETTING_BERT_MASK_CHANCE,mask_token_chance=SETTING_BERT_MASK_TOKEN_CHANCE)
 
 
 

@@ -35,7 +35,7 @@ class Dataset11(torch.utils.data.Dataset):
         return get_1_1_dataset_embedded(self.graph[ix], self.entities, self.corrupt, self.vector_size)
 
 
-def random_mask(token, mask_token, vocab_size, mask_chance=0.15, mask_token_chance=0.9):
+def random_mask(token, mask_token, vocab_size, mask_chance=0.33, mask_token_chance=0.9):
     mask_roll = torch.rand(())
     if mask_roll < mask_chance:
         mask_token_roll = torch.rand(())
@@ -48,30 +48,30 @@ def random_mask(token, mask_token, vocab_size, mask_chance=0.15, mask_token_chan
         return token, 0
 
 
-def mask_list_of_lists(l, mask_token, vocab_size, special_token_ids):
+def mask_list_of_lists(l, mask_token, vocab_size, special_token_ids, mask_chance = 0.33, mask_token_chance = 0.9):
     # get random mask for each token, but not for special tokens
     # this is not used ... probably too slow?!
     return torch.tensor(
-        [[random_mask(y, mask_token, vocab_size) if y not in special_token_ids else y for y in x] for x in l])
+        [[random_mask(y, mask_token, vocab_size,mask_chance= mask_chance, mask_token_chance = mask_token_chance) if y not in special_token_ids else y for y in x] for x in l])
 
 def lm_mask(ids,mask_token,special_token_ids):
     #TODO!
     return None
 
-def mask_list(l, mask_token, vocab_size, special_token_ids, type="MLM",typeargs=None):
+def mask_list(l, mask_token, vocab_size, special_token_ids, type="MLM",typeargs=None, mask_chance = 0.33, mask_token_chance = 0.9):
     # get random mask for each token, but not for special tokens
     if type =="MLM":
         return torch.tensor(
-            [random_mask(y, mask_token, vocab_size) if y not in special_token_ids else (y, 0) for y in l])
+            [random_mask(y, mask_token, vocab_size,mask_chance = mask_chance, mask_token_chance= mask_chance) if y not in special_token_ids else (y, 0) for y in l])
     elif type == "MASS":
         return torch.tensor(
-            [random_mask(y, mask_token, vocab_size,mask_token_chance=1) if y not in special_token_ids else (y, 0) for y in l])
+            [random_mask(y, mask_token, vocab_size,mask_chance = mask_chance,mask_token_chance=1) if y not in special_token_ids else (y, 0) for y in l])
     elif type == "LM":
         lm_mask(l,mask_token,special_token_ids)
 
 
 class DatasetBertTraining(torch.utils.data.Dataset):
-    def __init__(self, triples, special_tokens_map, tokenizer=None, max_length=128, dataset_type="MLM"):
+    def __init__(self, triples, special_tokens_map, tokenizer=None, max_length=128, dataset_type="MLM", mask_chance = 0.33, mask_token_chance = 0.9):
         """
 
 
@@ -82,6 +82,9 @@ class DatasetBertTraining(torch.utils.data.Dataset):
         TODO LM: Language modeling: predict end/beginning of sentence
         TODO LP: Link prediction
         """
+        self.mask_chance = mask_chance
+        self.mask_token_chance = mask_token_chance
+
         self.special_tokens_map = special_tokens_map
         self.dataset_type = dataset_type
         if not tokenizer:
