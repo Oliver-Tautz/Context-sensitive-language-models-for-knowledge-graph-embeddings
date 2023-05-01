@@ -8,13 +8,16 @@ from random import randint
 from tqdm import tqdm, trange
 import json
 from collections import defaultdict
+import urllib.request
+import gdown
+import zipfile
 
 
 class BertKGEmb():
-    def __init__(self, path, datapath=None, depth=3,use_best_eval = False,device = torch.device('cpu'),mode=None):
+    def __init__(self, path, datapath=None, depth=3, use_best_eval=False, device=torch.device('cpu'), mode=None):
         self.depth = depth
         path = Path(path)
-        self.mode=mode
+        self.mode = mode
         with open(path / 'special_tokens_map.json', 'r') as file:
             self.special_tokens_map = json.load(file)
 
@@ -41,10 +44,11 @@ class BertKGEmb():
         if datapath:
             if not Path(datapath).is_file():
                 # download dataset_file
-                run_str("wget  -q -nc --no-check-certificate \"https://docs.google.com/uc?export=download&id=1pBnn8bjI2VkVvBR33DnvpeyocfDhMCFA\" -O fb15k-237_nt.zip")
-
+                gdown.download("https://drive.google.com/file/d/1pBnn8bjI2VkVvBR33DnvpeyocfDhMCFA/view?usp=share_link",
+                               output="fb15k-237.zip", fuzzy=True)
+                with zipfile.ZipFile("fb15k-237.zip", 'r') as zip_ref:
+                    zip_ref.extractall(".")
                 # unzip dataset_file
-                run_str("unzip -n fb15k-237_nt.zip")
                 datapath = "./FB15K-237/train.nt"
 
             # get representation of graph
@@ -65,8 +69,9 @@ class BertKGEmb():
             walks_rels = [predicates[x].tolist() for x in walks_rels]
             walks = self.__merge_walks(walks_entities, walks_rels)
 
+            # useing defaultdict with identity. Missing keys will be return as single entities
             self.entity_walks = dict(zip(entities, walks))
-            print(self.entity_walks.keys())
+            # print(self.entity_walks.keys())
 
             # generate walks for all relations.
             walks_entities = []
@@ -93,7 +98,6 @@ class BertKGEmb():
             mode = self.mode
 
         def bert_process(input, column=1):
-
 
             # transformers padding works now :)
             # pad manually on string level... this is pretty bad practice.
@@ -127,13 +131,13 @@ class BertKGEmb():
 
         if mode == 'walks':
             if not relations:
-                entities_or_relations = [self.entity_walks[e] for e in entities_or_relations]
+                entities_or_relations = [self.entity_walks[e] if e in self.entity_walks else e for e in entities_or_relations]
                 # use column 1, because first entity after CLS is used
                 embeddings = bert_process(entities_or_relations, 1)
                 return embeddings
 
             else:
-                entities_or_relations = [self.relation_walks[r] for r in entities_or_relations]
+                entities_or_relations = [self.relation_walks[r] if r in self.relation_walks else r for r in entities_or_relations]
                 # use columne 2, because first relation is used
                 embeddings = bert_process(entities_or_relations, 2)
                 return embeddings
