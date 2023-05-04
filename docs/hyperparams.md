@@ -19,7 +19,7 @@ for walks:
 ## Training
 * epochs = <1000
 * batchsize= 1000
-
+* learning_rate = ?
 * options: MLM, MASS, LM, LP
 
 MLM:
