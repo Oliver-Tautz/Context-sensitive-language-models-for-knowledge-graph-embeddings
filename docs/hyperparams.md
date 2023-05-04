@@ -29,4 +29,4 @@ MLM:
 Early Stopping:
 * patience = 8
 * delta = 0.005
-
+* min_epochs=10
