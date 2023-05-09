@@ -35,6 +35,7 @@ class BertKGEmb():
             exit(-1)
         self.device = device
         model = model.to(device)
+        model.eval()
         self.model = model
         self.tz = tz
 
@@ -91,7 +92,7 @@ class BertKGEmb():
     def get_embeddings(self, entities_or_relations, mode='single', batchsize=100, relations=False):
         """
         modes:
-        single :: use [CLS],ent,[SEP] as input for each entity/relation.
+        single :: use [CLS],ent,[SEP] as input for each path/relation.
 
         """
         if self.mode:
@@ -108,21 +109,21 @@ class BertKGEmb():
             # for i,en in enumerate(input):
             #    if lens[i] < maxlen:
             #        input[i] = input[i]+' '.join([self.pad_token]*(maxlen-lens[i]).item())
+            with torch.no_grad():
+                input = self.tz(list(input), padding='longest', return_tensors='pt')
 
-            input = self.tz(list(input), padding='longest', return_tensors='pt')
+                ids = input['input_ids']
+                masks = input['attention_mask']
 
-            ids = input['input_ids']
-            masks = input['attention_mask']
+                ids = batch(ids.to(self.device), batchsize)
+                masks = batch(masks.to(self.device), batchsize)
 
-            ids = batch(ids.to(self.device), batchsize)
-            masks = batch(masks.to(self.device), batchsize)
+                batches = []
+                for i, m in zip(ids, masks):
+                    batches.append(self.model(input_ids=i, attention_mask=m)['last_hidden_state'][:, column])
+                embeddings = torch.cat(batches)
 
-            batches = []
-            for i, m in zip(ids, masks):
-                batches.append(self.model(input_ids=i, attention_mask=m)['last_hidden_state'][:, column])
-            embeddings = torch.cat(batches)
-
-            return embeddings
+                return embeddings
 
         if mode == 'single':
             embeddings = bert_process(entities_or_relations)
@@ -132,7 +133,7 @@ class BertKGEmb():
         if mode == 'walks':
             if not relations:
                 entities_or_relations = [self.entity_walks[e] if e in self.entity_walks else e for e in entities_or_relations]
-                # use column 1, because first entity after CLS is used
+                # use column 1, because first path after CLS is used
                 embeddings = bert_process(entities_or_relations, 1)
                 return embeddings
 
@@ -161,7 +162,7 @@ class BertKGEmb():
         entity_id = edges[chosen_edge][1]
 
         while depth > 0:
-            # consider ix of edges starting in entity
+            # consider ix of edges starting in path
             print(entity_id)
             possible_edges = (edges[:, 0] == entity_id).nonzero()[0]
 
@@ -199,7 +200,7 @@ class BertKGEmb():
         retries = 0
 
         while depth > 0:
-            # consider ix of edges starting in entity
+            # consider ix of edges starting in path
             possible_edges = (edges[:, 0] == entity_id).nonzero()[0]
 
             # choose one randomly

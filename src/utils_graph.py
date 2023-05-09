@@ -45,14 +45,14 @@ def get_all_corrupted_triples(triple, entities):
     return subject_corrupted + object_corrupted
 
 
-def get_random_corrupted_triple(triple, entities, corrupt='object'):
+def get_random_corrupted_triple(triple, entities, corrupt='random'):
     """
     corrupt = one of 'subject', 'object', 'both'
 
-    return corrupted triple with random entity
+    return corrupted triple with random path
     """
 
-    s, p, o = triple
+    cls, s, p, o, sep = triple
 
     # set up as the same
     s_corr = s
@@ -68,7 +68,7 @@ def get_random_corrupted_triple(triple, entities, corrupt='object'):
             o_corr = choose(entities)
     elif corrupt == 'random':
         # corrupt one or both randomly
-        ch = np.random.randint(3)
+        ch = np.random.randint(2)
 
         if ch == 0:
             while s_corr == s:
@@ -85,7 +85,7 @@ def get_random_corrupted_triple(triple, entities, corrupt='object'):
             s_corr = choose(entities)
             o_corr = choose(entities)
 
-    return (s_corr, p, o_corr)
+    return torch.tensor((cls,s_corr, p, o_corr,sep))
 
 
 def clean_graph(graph, wv):
@@ -105,6 +105,7 @@ def clean_graph(graph, wv):
 
 
 def parse_kg(path):
+
     graph = Graph()
     graph.parse(path)
     entities = get_entities([graph])

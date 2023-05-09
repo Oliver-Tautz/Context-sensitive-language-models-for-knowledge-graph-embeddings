@@ -22,14 +22,15 @@ from rdflib import Graph
 
 import torch
 from torch.utils.data import DataLoader
-from utils_data import DatasetBertTraining
+from utils_data import DatasetBertTraining, DatasetBertTraining_LP
 import pandas as pd
 import shutil
 from utils import verbprint
-from utils_train import train_bert_embeddings, score_bert_model
+from utils_train import train_bert_embeddings_mlm, score_bert_model_mlm, train_bert_embeddings_lp, score_bert_model_lp
 from jrdf2vec_walks_for_bert import generate_walks
 from profiler import Profiler
 from sklearn.model_selection import train_test_split
+
 
 def main(args):
     try:
@@ -52,24 +53,25 @@ def main(args):
         SETTING_BERT_WALK_COUNT = cfg_parser.getint('TRAIN', 'BERT_WALK_COUNT')
         SETTING_BERT_WALK_GENERATION_MODE = cfg_parser.get('TRAIN', 'BERT_WALK_GENERATION_MODE')
 
-        SETTING_BERT_DATASET_TYPE = cfg_parser.get('TRAIN', 'BERT_DATASET_TYPE')
+        SETTING_BERT_DATASET_TYPE = cfg_parser.get('TRAIN', 'BERT_DATASET_TYPE').upper()
 
         SETTING_STOP_EARLY = cfg_parser.getint('TRAIN', 'BERT_EARLY_STOPPING_PATIENCE')
         SETTINGS_STOP_EARLY_DELTA = cfg_parser.getfloat('TRAIN', 'BERT_EARLY_STOPPING_DELTA')
 
-        SETTING_BERT_MASK_CHANCE= cfg_parser.getfloat('TRAIN', 'BERT_MASK_CHANCE')
+        SETTING_BERT_MASK_CHANCE = cfg_parser.getfloat('TRAIN', 'BERT_MASK_CHANCE')
         SETTING_BERT_MASK_TOKEN_CHANCE = cfg_parser.getfloat('TRAIN', 'BERT_MASK_TOKEN_CHANCE')
 
         if SETTING_BERT_WALK_USE:
             SETTING_WORK_FOLDER = Path(
                 f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}_walks_d={SETTING_BERT_WALK_DEPTH}_w={SETTING_BERT_WALK_COUNT}_g={SETTING_BERT_WALK_GENERATION_MODE}_dataset={SETTING_BERT_DATASET_TYPE}_mask-chance={SETTING_BERT_MASK_CHANCE}_mask-token-chance={SETTING_BERT_MASK_TOKEN_CHANCE}")
 
-            # depth*2 + entity + CLS + SEP
-            SETTING_BERT_MAXLEN = SETTING_BERT_WALK_DEPTH*2+3
+            # depth*2 + path + CLS + SEP
+            SETTING_BERT_MAXLEN = SETTING_BERT_WALK_DEPTH * 2 + 3
         else:
             # triple, so we have cls,e,r,e,sep
             SETTING_BERT_MAXLEN = 5
-            SETTING_WORK_FOLDER = Path(f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}_dataset={SETTING_BERT_DATASET_TYPE}_mask-chance={SETTING_BERT_MASK_CHANCE}_mask-token-chance={SETTING_BERT_MASK_TOKEN_CHANCE}")
+            SETTING_WORK_FOLDER = Path(
+                f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}_dataset={SETTING_BERT_DATASET_TYPE}_mask-chance={SETTING_BERT_MASK_CHANCE}_mask-token-chance={SETTING_BERT_MASK_TOKEN_CHANCE}")
 
         SETTING_PLOT_FOLDER = SETTING_WORK_FOLDER / 'plot'
         SETTING_DATA_FOLDER = SETTING_WORK_FOLDER / 'data'
@@ -93,9 +95,37 @@ def main(args):
     if args.debug:
         SETTING_DEBUG = True
     verbprint("Loading Dataset")
+    if SETTING_BERT_DATASET_TYPE == 'MLM' or SETTING_BERT_DATASET_TYPE == 'MASS':
+        if not SETTING_BERT_WALK_USE:
+            print('using triples!')
+            g_train = Graph()
+            g_val = Graph()
 
-    if not SETTING_BERT_WALK_USE:
-        print('using triples!')
+            g_train = g_train.parse(SETTING_DATASET_PATH / 'train.nt', format='nt')
+            g_val = g_val.parse(SETTING_DATASET_PATH / 'valid.nt', format='nt')
+
+            # Join triples together
+            dataset = [' '.join(x) for x in g_train]
+            dataset_eval = [' '.join(x) for x in g_val]
+        else:
+            # use walks
+            # train/test split from train walks as eval graph is not connected.
+            walks_name = f'{f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}"}'
+
+            walks_name = generate_walks(SETTING_TMP_DIR, SETTING_DATASET_PATH / 'train.nt',
+                                        walks_name, 4,
+                                        SETTING_BERT_WALK_DEPTH, SETTING_BERT_WALK_COUNT,
+                                        SETTING_BERT_WALK_GENERATION_MODE)
+
+            # Warning, this reads lines with \n in it. Whitespace splitting takes care of it in the tokenizer.
+            walkspath_file = open(walks_name, 'r')
+            dataset = walkspath_file.readlines()
+            walkspath_file.close()
+
+            dataset_eval, dataset = train_test_split(dataset, train_size=0.75, test_size=0.25, random_state=328)
+
+            print(len(dataset), len(dataset_eval))
+    elif SETTING_BERT_DATASET_TYPE == "LP":
         g_train = Graph()
         g_val = Graph()
 
@@ -105,38 +135,11 @@ def main(args):
         # Join triples together
         dataset = [' '.join(x) for x in g_train]
         dataset_eval = [' '.join(x) for x in g_val]
-    else:
-        # use walks
-        # train/test split from train walks as eval graph is not connected.
-        walks_name = f'{f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}"}'
-
-
-        walks_name = generate_walks(SETTING_TMP_DIR, SETTING_DATASET_PATH / 'train.nt',
-                                    walks_name, 4,
-                                    SETTING_BERT_WALK_DEPTH, SETTING_BERT_WALK_COUNT,
-                                    SETTING_BERT_WALK_GENERATION_MODE)
-
-
-
-        # Warning, this reads lines with \n in it. Whitespace splitting takes care of it in the tokenizer.
-        walkspath_file = open(walks_name, 'r')
-        dataset = walkspath_file.readlines()
-        walkspath_file.close()
-
-        def percent_length(dataset,percent):
-            return math.floor(percent * len(dataset))
-        print(len(dataset))
-        dataset_eval, dataset = train_test_split(dataset,train_size=0.75,test_size=0.25,random_state=328)
-
-
-
-        print(len(dataset),len(dataset_eval))
-
 
     if SETTING_DEBUG:
         dataset = dataset[0:1000]
         dataset_eval = dataset_eval[0:100]
-        #SETTING_BERT_EPOCHS = 10
+        # SETTING_BERT_EPOCHS = 10
         SETTING_BERT_BATCHSIZE = 5000
 
     verbprint(f"example data: {dataset[0:10]}")
@@ -146,11 +149,21 @@ def main(args):
     special_tokens_map = tz.special_tokens_map_extended
 
     verbprint(f"special tokens: {special_tokens_map}")
-
-    dataset = DatasetBertTraining(dataset, special_tokens_map, dataset_type=SETTING_BERT_DATASET_TYPE,mask_chance=SETTING_BERT_MASK_CHANCE,mask_token_chance=SETTING_BERT_MASK_TOKEN_CHANCE)
-    tz = dataset.get_tokenizer()
-    dataset_eval = DatasetBertTraining(dataset_eval, special_tokens_map, tokenizer=tz,
-                                              dataset_type=SETTING_BERT_DATASET_TYPE,mask_chance=SETTING_BERT_MASK_CHANCE,mask_token_chance=SETTING_BERT_MASK_TOKEN_CHANCE)
+    if SETTING_BERT_DATASET_TYPE == 'MLM':
+        dataset = DatasetBertTraining(dataset, special_tokens_map, dataset_type=SETTING_BERT_DATASET_TYPE,
+                                      mask_chance=SETTING_BERT_MASK_CHANCE,
+                                      mask_token_chance=SETTING_BERT_MASK_TOKEN_CHANCE)
+        tz = dataset.get_tokenizer()
+        dataset_eval = DatasetBertTraining(dataset_eval, special_tokens_map, tokenizer=tz,
+                                           dataset_type=SETTING_BERT_DATASET_TYPE, mask_chance=SETTING_BERT_MASK_CHANCE,
+                                           mask_token_chance=SETTING_BERT_MASK_TOKEN_CHANCE)
+    elif SETTING_BERT_DATASET_TYPE == 'LP':
+        dataset = DatasetBertTraining_LP(dataset, special_tokens_map, tokenizer=None, max_length=128)
+        tz = dataset.get_tokenizer()
+        dataset_eval = DatasetBertTraining_LP(dataset_eval, special_tokens_map, tokenizer=tz, max_length=128)
+    else:
+        print('Wrong Dataset Option!')
+        exit(-1)
 
     verbprint(f"example data processed: {dataset[0]}")
 
@@ -173,10 +186,13 @@ def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     print(f'cuda available: {torch.cuda.is_available()}')
-    tiny_encoder = BertForTokenClassification(encoder_config)
+    if SETTING_BERT_DATASET_TYPE == 'MLM':
+        tiny_encoder = BertForTokenClassification(encoder_config)
+    elif SETTING_BERT_DATASET_TYPE == 'LP':
+        tiny_encoder = BertModel(encoder_config)
     tiny_encoder = tiny_encoder.to(device)
 
-    lossF = torch.nn.CrossEntropyLoss()
+
 
     verbprint("Starting training")
 
@@ -184,12 +200,22 @@ def main(args):
     os.makedirs(SETTING_PLOT_FOLDER, exist_ok=True)
     os.makedirs(SETTING_DATA_FOLDER, exist_ok=True)
 
-    tiny_encoder, optimizer, history, profile = train_bert_embeddings(tiny_encoder, SETTING_BERT_EPOCHS, dataset,
-                                                                      dataset_eval, SETTING_BERT_BATCHSIZE,
-                                                                      torch.optim.Adam, lossF, device,
-                                                                      SETTING_WORK_FOLDER,
-                                                                      stop_early_patience=SETTING_STOP_EARLY,
-                                                                      stop_early_delta=SETTINGS_STOP_EARLY_DELTA)
+    if SETTING_BERT_DATASET_TYPE == 'MLM':
+        lossF = torch.nn.CrossEntropyLoss()
+        tiny_encoder, optimizer, history, profile = train_bert_embeddings_mlm(tiny_encoder, SETTING_BERT_EPOCHS, dataset,
+                                                                              dataset_eval, SETTING_BERT_BATCHSIZE,
+                                                                              torch.optim.Adam, lossF, device,
+                                                                              SETTING_WORK_FOLDER,
+                                                                              stop_early_patience=SETTING_STOP_EARLY,
+                                                                              stop_early_delta=SETTINGS_STOP_EARLY_DELTA)
+    elif SETTING_BERT_DATASET_TYPE == 'LP':
+        lossF = torch.nn.BCEWithLogitsLoss()
+        tiny_encoder, optimizer, history, profile, classifier = train_bert_embeddings_lp(tiny_encoder, SETTING_BERT_EPOCHS, dataset,
+                                                                              dataset_eval, SETTING_BERT_BATCHSIZE,
+                                                                              torch.optim.Adam, lossF, device,
+                                                                              SETTING_WORK_FOLDER,
+                                                                              stop_early_patience=SETTING_STOP_EARLY,
+                                                                              stop_early_delta=SETTINGS_STOP_EARLY_DELTA)
 
     # Save data
 
@@ -227,12 +253,18 @@ def main(args):
     if SETTING_DEBUG:
         dataset_test = dataset_test[0:1000]
 
-    dataset_test = DatasetBertTraining(dataset_test, special_tokens_map, tokenizer=tz,
-                                              dataset_type=SETTING_BERT_DATASET_TYPE,mask_chance=SETTING_BERT_MASK_CHANCE,mask_token_chance=SETTING_BERT_MASK_TOKEN_CHANCE)
+    if SETTING_BERT_DATASET_TYPE == 'MLM':
+        dataset_test = DatasetBertTraining(dataset_test, special_tokens_map, tokenizer=tz,
+                                           dataset_type=SETTING_BERT_DATASET_TYPE, mask_chance=SETTING_BERT_MASK_CHANCE,
+                                           mask_token_chance=SETTING_BERT_MASK_TOKEN_CHANCE)
+        testscore = score_bert_model_mlm(tiny_encoder, device, dataset_test, SETTING_BERT_BATCHSIZE, optimizer, lossF)
+    elif SETTING_BERT_DATASET_TYPE == 'LP':
+        dataset_test = DatasetBertTraining_LP(dataset_test, special_tokens_map, tokenizer=tz, max_length=128)
+        testscore = score_bert_model_lp(tiny_encoder, device, dataset_test, SETTING_BERT_BATCHSIZE, optimizer,
+                                                 lossF,classifier)
 
 
 
-    testscore = score_bert_model(tiny_encoder, device, dataset_test, SETTING_BERT_BATCHSIZE, optimizer, lossF)
     testscorefile = open(SETTING_DATA_FOLDER / 'testscore.txt', mode='w')
     testscorefile.write(str(testscore))
     testscorefile.close()
@@ -264,8 +296,6 @@ if __name__ == '__main__':
                         help="Set temporary directory. Will be cleared!!! Walks and other data will be stored there. The directory should be either empty or non existent. Make sure you have r/w rights!",
                         type=str,
                         default="./tmp")
-
-
 
     args = parser.parse_args()
 

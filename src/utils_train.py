@@ -103,8 +103,8 @@ def fit_1_1(model, graph, word_vec_mapping, batch_size, entities, metrics=None, 
     return model, optimizer, history
 
 
-def train_bert_embeddings(model, epochs, dataset, dataset_eval, batchsize, optimizer, lossF, device, folder,
-                          stop_early_patience=5, stop_early_delta=0.1):
+def train_bert_embeddings_mlm(model, epochs, dataset, dataset_eval, batchsize, optimizer, lossF, device, folder,
+                              stop_early_patience=5, stop_early_delta=0.1):
     """
     Train a model on a dataset_file.
 
@@ -235,7 +235,165 @@ def train_bert_embeddings(model, epochs, dataset, dataset_eval, batchsize, optim
     return model, optimizer, history, profiler.get_profile()
 
 
-def score_bert_model(model, device, dataset, batchsize, optimizer, lossF):
+def train_bert_embeddings_lp(model, epochs, dataset, dataset_eval, batchsize, optimizer, lossF, device, folder,
+                              stop_early_patience=5, stop_early_delta=0.1):
+    """
+    Train a model on a dataset_file.
+
+    """
+    # doing this because we get 1/2 fake triples
+    batchsize=int(batchsize/2)
+    early_stopper = EarlyStopper(stop_early_patience, stop_early_delta)
+    best_eval_loss = None
+
+    dl = DataLoader(dataset, batch_size=batchsize, shuffle=True, pin_memory=True)
+    dl_eval = DataLoader(dataset_eval, batch_size=batchsize, shuffle=False, pin_memory=True)
+
+    optimizer = optimizer(model.parameters())
+
+    loss_metric = torchmetrics.aggregation.MeanMetric().to(device)
+    batchloss_metric = torchmetrics.aggregation.CatMetric().to(device)
+    batchloss_metric_eval = torchmetrics.aggregation.CatMetric().to(device)
+    history = defaultdict(list)
+
+    verbprint(f"cuda_model: {next(model.parameters()).is_cuda}")
+    verbprint("Starting training")
+
+    profiler = Profiler(['batch', 'device', 'forward', 'loss', 'backward', 'metrics', 'eval'])
+
+    classifier = torch.nn.Sequential(
+        torch.nn.Linear(VECTOR_SIZE*3,VECTOR_SIZE),
+        torch.nn.Dropout(0.25),
+        torch.nn.ReLU(),
+        torch.nn.Linear(VECTOR_SIZE,int(VECTOR_SIZE/2)),
+        torch.nn.ReLU(),
+        torch.nn.Linear(int(VECTOR_SIZE/2),1),
+
+    )
+    classifier.train()
+
+    for ep in trange(epochs):
+        for real_tp,  fake_tp in dl:
+
+            real_tp = real_tp.squeeze()
+            fake_tp = fake_tp.squeeze()
+
+            tp = torch.cat((real_tp,fake_tp))
+
+            profiler.timer_start('batch')
+
+
+            attention_mask = torch.ones((len(real_tp)*2, 5))
+            label = torch.cat((torch.ones(len(real_tp)),torch.zeros(len(fake_tp))))
+
+
+            model.train()
+            classifier.train()
+            optimizer.zero_grad()
+
+            profiler.timer_stop('batch')
+
+            profiler.timer_start('device')
+            tp = tp.to(device)
+            attention_mask = attention_mask.to(device)
+            label=label.to(device)
+
+            profiler.timer_stop('device')
+
+            profiler.timer_start('forward')
+            out = model.forward(tp, attention_mask)
+
+            embeddings = out['last_hidden_state']
+            # remove cls and sep embeddings and flatten
+            classifiert_input = embeddings[:,1:4].flatten(1,2)
+
+            predictions = classifier.forward(classifiert_input).squeeze()
+
+
+
+            profiler.timer_stop('forward')
+            profiler.timer_start('loss')
+
+            loss = lossF(predictions, label)
+
+            profiler.timer_stop('loss')
+
+            profiler.timer_start('backward')
+
+            loss.backward()
+            optimizer.step()
+
+            profiler.timer_stop('backward')
+
+            # detach loss! Otherwise causes memory leakage
+
+            profiler.timer_start('metrics')
+            loss_metric(loss.detach())
+            batchloss_metric(loss.detach())
+            profiler.timer_stop('metrics')
+
+        profiler.timer_start('metrics')
+        history['loss'].append(loss_metric.compute().detach().item())
+        loss_metric.reset()
+        profiler.timer_stop('metrics')
+
+        profiler.timer_start('eval')
+        with torch.no_grad():
+            model.eval()
+            classifier.eval()
+            for real_tp,  fake_tp in dl_eval:
+                optimizer.zero_grad()
+
+                tp = torch.cat((real_tp, fake_tp))
+
+
+
+                attention_mask = torch.ones((len(real_tp) * 2, 5))
+                label = torch.cat((torch.ones(len(real_tp)), torch.zeros(len(fake_tp))))
+
+                tp = tp.to(device).squeeze()
+                attention_mask = attention_mask.to(device)
+                label = label.to(device)
+                out = model.forward(tp, attention_mask)
+
+                embeddings = out['last_hidden_state']
+                # remove cls and sep embeddings and flatten
+                classifiert_input = embeddings[:, 1:4].flatten(1, 2)
+
+                predictions = classifier.forward(classifiert_input).squeeze()
+
+                loss = lossF( predictions, label)
+
+                loss_metric(loss.detach())
+                batchloss_metric_eval(loss.detach())
+
+            eval_loss = loss_metric.compute().detach().item()
+            if not best_eval_loss:
+                best_eval_loss = eval_loss
+            else:
+                if eval_loss < best_eval_loss:
+                    best_eval_loss = eval_loss
+                    model.save_pretrained(folder / "model_best_eval")
+
+
+            history['loss_eval'].append(eval_loss)
+
+            loss_metric.reset()
+        print('current_loss=',history['loss'][-1],'\t', 'eval_loss=',history['loss_eval'][-1])
+
+
+        profiler.timer_stop('eval')
+        early_stopper.measure(eval_loss)
+        if early_stopper.should_stop():
+            break
+
+    history['batchloss_metric'] = batchloss_metric
+    history['batchloss_metric_eval'] = batchloss_metric_eval
+
+    profiler.eval()
+    return model, optimizer, history, profiler.get_profile(), classifier
+
+def score_bert_model_mlm(model, device, dataset, batchsize, optimizer, lossF):
     with torch.no_grad():
         dl_test = DataLoader(dataset, batch_size=batchsize, shuffle=False, pin_memory=True)
         loss_metric = torchmetrics.aggregation.MeanMetric().to(device)
@@ -262,6 +420,46 @@ def score_bert_model(model, device, dataset, batchsize, optimizer, lossF):
             batch_mask = (inputs[:, :, 1] > 0).flatten().to(device)
 
             loss = lossF(logits_no_sequence[batch_mask], batch_labels_no_sequence[batch_mask])
+
+            loss_metric(loss.detach())
+            batchloss_metric_eval(loss.detach())
+    return loss_metric.compute().item()
+
+
+def score_bert_model_lp(model, device, dataset, batchsize, optimizer, lossF,classifier):
+    with torch.no_grad():
+        dl_test = DataLoader(dataset, batch_size=batchsize, shuffle=False, pin_memory=True)
+        loss_metric = torchmetrics.aggregation.MeanMetric().to(device)
+        batchloss_metric_eval = torchmetrics.aggregation.CatMetric().to(device)
+
+        model.eval()
+        classifier.eval()
+        loss_metric.reset()
+        for real_tp,  fake_tp in dl_test:
+            optimizer.zero_grad()
+            tp = torch.cat((real_tp, fake_tp))
+
+
+
+            attention_mask = torch.ones((len(real_tp) * 2, 5))
+            label = torch.cat((torch.ones(len(real_tp)), torch.zeros(len(fake_tp))))
+
+
+            tp = tp.to(device).squeeze()
+            attention_mask = attention_mask.to(device)
+            label = label.to(device)
+
+            out = model.forward(tp, attention_mask)
+
+            embeddings = out['last_hidden_state']
+            # remove cls and sep embeddings and flatten
+            classifiert_input = embeddings[:, 1:4].flatten(1, 2)
+
+            predictions = classifier.forward(classifiert_input).squeeze()
+
+
+            loss = lossF(predictions, label)
+
 
             loss_metric(loss.detach())
             batchloss_metric_eval(loss.detach())

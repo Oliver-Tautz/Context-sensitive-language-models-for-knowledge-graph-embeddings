@@ -51,7 +51,7 @@ def tabulate_results(path):
 
                     table.append([f"{bert_model}_{embedding_type}_{file}"] + list)
 
-    print(tabulate(sorted(table,key=lambda x: x[1]), headers=header))
+    print(tabulate(sorted(table,key=lambda x: x[0]), headers=header))
 
 # df.to_csv(basepath / 'testscores.csv',index=False,sep='\t')
 # print(df.to_string(basepath / 'testscores.csv',index=False,sep='\t'))
