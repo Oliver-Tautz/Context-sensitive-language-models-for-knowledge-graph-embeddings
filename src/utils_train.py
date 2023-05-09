@@ -271,7 +271,7 @@ def train_bert_embeddings_lp(model, epochs, dataset, dataset_eval, batchsize, op
 
     )
     classifier.train()
-
+    classifier = classifier.to(device)
     for ep in trange(epochs):
         for real_tp,  fake_tp in dl:
 
