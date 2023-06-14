@@ -278,12 +278,15 @@ def train_bert_embeddings_lp(model, epochs, dataset, dataset_eval, batchsize, op
             real_tp = real_tp.squeeze()
             fake_tp = fake_tp.squeeze()
 
+            if len(fake_tp.shape)>2:
+                fake_tp = fake_tp.flatten(0,1)
+
             tp = torch.cat((real_tp,fake_tp))
 
             profiler.timer_start('batch')
 
 
-            attention_mask = torch.ones((len(real_tp)*2, 5))
+            attention_mask = torch.ones((len(real_tp) + len(fake_tp), 5))
             label = torch.cat((torch.ones(len(real_tp)),torch.zeros(len(fake_tp))))
 
 
@@ -342,13 +345,21 @@ def train_bert_embeddings_lp(model, epochs, dataset, dataset_eval, batchsize, op
             model.eval()
             classifier.eval()
             for real_tp,  fake_tp in dl_eval:
-                optimizer.zero_grad()
 
+                real_tp = real_tp.squeeze()
+                fake_tp = fake_tp.squeeze()
+
+                optimizer.zero_grad()
+                print('real_tp.shape',real_tp.shape)
+                print('fake_tp.shape',fake_tp.shape)
+                if len(fake_tp.shape) > 2:
+                    fake_tp = fake_tp.flatten(0, 1)
+                print('fake_tp.shape',fake_tp.shape)
                 tp = torch.cat((real_tp, fake_tp))
 
 
 
-                attention_mask = torch.ones((len(real_tp) * 2, 5))
+                attention_mask = torch.ones((len(real_tp) + len(fake_tp), 5))
                 label = torch.cat((torch.ones(len(real_tp)), torch.zeros(len(fake_tp))))
 
                 tp = tp.to(device).squeeze()

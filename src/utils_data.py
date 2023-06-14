@@ -149,7 +149,7 @@ class DatasetBertTraining(torch.utils.data.Dataset):
         return self.special_tokens_map
 
 class DatasetBertTraining_LP(torch.utils.data.Dataset):
-    def __init__(self, triples, special_tokens_map, tokenizer=None, max_length=128):
+    def __init__(self, triples, special_tokens_map, tokenizer=None, max_length=128,one_to_n_n=50):
         """
 
 
@@ -161,7 +161,7 @@ class DatasetBertTraining_LP(torch.utils.data.Dataset):
         TODO LP: Link prediction
         """
 
-
+        self.one_to_n_n = one_to_n_n
         self.special_tokens_map = special_tokens_map
 
         if not tokenizer:
@@ -221,7 +221,10 @@ class DatasetBertTraining_LP(torch.utils.data.Dataset):
     def __get_false_triples(self,true_triples):
         if len(true_triples.shape) == 1:
             true_triples = [true_triples]
-        return torch.stack([get_random_corrupted_triple(x,self.entities) for x in true_triples])
+        fake_triples = []
+        for i in range(self.one_to_n_n):
+            fake_triples.extend([get_random_corrupted_triple(x,self.entities) for x in true_triples])
+        return torch.stack(fake_triples)
 
     def get_tokenizer(self):
         return self.word_level_tokenizer
