@@ -90,7 +90,7 @@ def get_random_corrupted_triple(triple, entities, corrupt='random'):
 
 def clean_graph(graph, wv):
     """
-    clean graph such that all triples have word vectors present in wv
+    clean graph such that all input have word vectors present in wv
 
     """
     no_removed = 0

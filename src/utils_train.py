@@ -235,13 +235,131 @@ def train_bert_embeddings_mlm(model, epochs, dataset, dataset_eval, batchsize, o
     return model, optimizer, history, profiler.get_profile()
 
 
+def train_bert_embeddings_lm(model, epochs, dataset, dataset_eval, batchsize, optimizer, device, folder,
+                              stop_early_patience=5, stop_early_delta=0.1):
+    """
+    Train a model on a dataset_file.
+
+    """
+
+    early_stopper = EarlyStopper(stop_early_patience, stop_early_delta)
+    best_eval_loss = None
+
+    dl = DataLoader(dataset, batch_size=batchsize, shuffle=True, pin_memory=True)
+    dl_eval = DataLoader(dataset_eval, batch_size=batchsize, shuffle=False, pin_memory=True)
+
+    optimizer = optimizer(model.parameters())
+
+    loss_metric = torchmetrics.aggregation.MeanMetric().to(device)
+    batchloss_metric = torchmetrics.aggregation.CatMetric().to(device)
+    batchloss_metric_eval = torchmetrics.aggregation.CatMetric().to(device)
+    history = defaultdict(list)
+
+    verbprint(f"cuda_model: {next(model.parameters()).is_cuda}")
+    verbprint("Starting training")
+
+    profiler = Profiler(['batch', 'device', 'forward', 'loss', 'backward', 'metrics', 'eval'])
+
+    for ep in trange(epochs):
+        for batch_ids, batch_mask,batch_type_ids, batch_labels in dl:
+
+            profiler.timer_start('batch')
+
+            model.train()
+            optimizer.zero_grad()
+
+            profiler.timer_stop('batch')
+
+            profiler.timer_start('device')
+            batch_ids = batch_ids.to(device)
+            batch_mask = batch_mask.to(device)
+
+            batch_type_ids = batch_type_ids.to(device)
+            batch_labels = batch_labels.to(device)
+
+            profiler.timer_stop('device')
+
+            profiler.timer_start('forward')
+
+            out = model.forward(batch_ids, batch_mask,batch_type_ids,labels = batch_labels)
+            profiler.timer_stop('forward')
+            profiler.timer_start('loss')
+
+            loss = out.loss
+
+            profiler.timer_stop('loss')
+
+            profiler.timer_start('backward')
+
+            loss.backward()
+            optimizer.step()
+
+            profiler.timer_stop('backward')
+
+            # detach loss! Otherwise causes memory leakage
+
+            profiler.timer_start('metrics')
+            loss_metric(loss.detach())
+            batchloss_metric(loss.detach())
+            profiler.timer_stop('metrics')
+
+        profiler.timer_start('metrics')
+        history['loss'].append(loss_metric.compute().detach().item())
+        loss_metric.reset()
+        profiler.timer_stop('metrics')
+
+        profiler.timer_start('eval')
+        with torch.no_grad():
+            model.eval()
+            for batch_ids, batch_mask, batch_type_ids, batch_labels in dl_eval:
+                optimizer.zero_grad()
+
+                batch_ids = batch_ids.to(device)
+                batch_mask = batch_mask.to(device)
+                batch_type_ids = batch_type_ids.to(device)
+                batch_labels = batch_labels.to(device)
+
+                out = model.forward(batch_ids,batch_mask,batch_type_ids,labels = batch_labels)
+                loss = out.loss
+
+                loss_metric(loss.detach())
+                batchloss_metric_eval(loss.detach())
+
+            eval_loss = loss_metric.compute().detach().item()
+            if not best_eval_loss:
+                best_eval_loss = eval_loss
+            else:
+                if eval_loss < best_eval_loss:
+                    best_eval_loss = eval_loss
+                    model.save_pretrained(folder / "model_best_eval")
+
+
+            history['loss_eval'].append(eval_loss)
+
+            loss_metric.reset()
+        print('current_loss=',history['loss'][-1],'\t', 'eval_loss=',history['loss_eval'][-1])
+
+
+        profiler.timer_stop('eval')
+        early_stopper.measure(eval_loss)
+        if early_stopper.should_stop():
+            break
+
+    history['batchloss_metric'] = batchloss_metric
+    history['batchloss_metric_eval'] = batchloss_metric_eval
+
+    profiler.eval()
+    return model, optimizer, history, profiler.get_profile()
+
+
+
 def train_bert_embeddings_lp(model, epochs, dataset, dataset_eval, batchsize, optimizer, lossF, device, folder,
                               stop_early_patience=5, stop_early_delta=0.1):
     """
     Train a model on a dataset_file.
 
     """
-    # doing this because we get 1/2 fake triples
+    # doing this because we get 1/2 fake input
     batchsize=int(batchsize/2)
     early_stopper = EarlyStopper(stop_early_patience, stop_early_delta)
     best_eval_loss = None
@@ -350,11 +468,10 @@ def train_bert_embeddings_lp(model, epochs, dataset, dataset_eval, batchsize, op
                 fake_tp = fake_tp.squeeze()
 
                 optimizer.zero_grad()
-                print('real_tp.shape',real_tp.shape)
-                print('fake_tp.shape',fake_tp.shape)
+
                 if len(fake_tp.shape) > 2:
                     fake_tp = fake_tp.flatten(0, 1)
-                print('fake_tp.shape',fake_tp.shape)
+
                 tp = torch.cat((real_tp, fake_tp))
 
 
@@ -447,12 +564,20 @@ def score_bert_model_lp(model, device, dataset, batchsize, optimizer, lossF,clas
         classifier.eval()
         loss_metric.reset()
         for real_tp,  fake_tp in dl_test:
+
             optimizer.zero_grad()
+
+            real_tp = real_tp.squeeze()
+            fake_tp = fake_tp.squeeze()
+
+            if len(fake_tp.shape)>2:
+                fake_tp = fake_tp.flatten(0,1)
+
             tp = torch.cat((real_tp, fake_tp))
 
 
 
-            attention_mask = torch.ones((len(real_tp) * 2, 5))
+            attention_mask = torch.ones((len(real_tp) + len(fake_tp), 5))
             label = torch.cat((torch.ones(len(real_tp)), torch.zeros(len(fake_tp))))
 
 

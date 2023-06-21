@@ -1,7 +1,7 @@
 import transformers
 from tokenizers.models import WordLevel
 from tokenizers import Tokenizer
-from transformers import BertTokenizer, EncoderDecoderModel, BertForTokenClassification
+from transformers import BertTokenizer, EncoderDecoderModel, BertForTokenClassification, BertForNextSentencePrediction
 from tokenizers.pre_tokenizers import WhitespaceSplit
 from tokenizers.trainers import WordLevelTrainer
 from tokenizers.processors import BertProcessing
@@ -19,18 +19,18 @@ import torchmetrics
 import math
 from tqdm import tqdm, trange
 from rdflib import Graph
-
+import numpy as np
 import torch
 from torch.utils.data import DataLoader
-from utils_data import DatasetBertTraining, DatasetBertTraining_LP
+from utils_data import DatasetBertTraining, DatasetBertTraining_LP, DatasetBertTraining_LM
 import pandas as pd
 import shutil
 from utils import verbprint
-from utils_train import train_bert_embeddings_mlm, score_bert_model_mlm, train_bert_embeddings_lp, score_bert_model_lp
+from utils_train import train_bert_embeddings_mlm, score_bert_model_mlm, train_bert_embeddings_lp, score_bert_model_lp, train_bert_embeddings_lm
 from jrdf2vec_walks_for_bert import generate_walks
 from profiler import Profiler
 from sklearn.model_selection import train_test_split
-
+from utils_graph import parse_kg
 
 def main(args):
     try:
@@ -60,6 +60,7 @@ def main(args):
 
         SETTING_BERT_MASK_CHANCE = cfg_parser.getfloat('TRAIN', 'BERT_MASK_CHANCE')
         SETTING_BERT_MASK_TOKEN_CHANCE = cfg_parser.getfloat('TRAIN', 'BERT_MASK_TOKEN_CHANCE')
+        SETTING_BERT_LM_WRONG_SAMPLE_NUMBER = 10
 
         if SETTING_BERT_WALK_USE:
             SETTING_WORK_FOLDER = Path(
@@ -97,14 +98,14 @@ def main(args):
     verbprint("Loading Dataset")
     if SETTING_BERT_DATASET_TYPE == 'MLM' or SETTING_BERT_DATASET_TYPE == 'MASS':
         if not SETTING_BERT_WALK_USE:
-            print('using triples!')
+            print('using input!')
             g_train = Graph()
             g_val = Graph()
 
             g_train = g_train.parse(SETTING_DATASET_PATH / 'train.nt', format='nt')
             g_val = g_val.parse(SETTING_DATASET_PATH / 'valid.nt', format='nt')
 
-            # Join triples together
+            # Join input together
             dataset = [' '.join(x) for x in g_train]
             dataset_eval = [' '.join(x) for x in g_val]
         else:
@@ -122,7 +123,7 @@ def main(args):
             dataset = walkspath_file.readlines()
             walkspath_file.close()
 
-            dataset_eval, dataset = train_test_split(dataset, train_size=0.75, test_size=0.25, random_state=328)
+            dataset, dataset_eval = train_test_split(dataset, train_size=0.75, test_size=0.25, random_state=328)
 
             print(len(dataset), len(dataset_eval))
     elif SETTING_BERT_DATASET_TYPE == "LP":
@@ -132,16 +133,94 @@ def main(args):
         g_train = g_train.parse(SETTING_DATASET_PATH / 'train.nt', format='nt')
         g_val = g_val.parse(SETTING_DATASET_PATH / 'valid.nt', format='nt')
 
-        # Join triples together
+        # Join input together
         dataset = [' '.join(x) for x in g_train]
         dataset_eval = [' '.join(x) for x in g_val]
 
+    elif SETTING_BERT_DATASET_TYPE == "LM":
+
+
+        walks_name = f'{f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}"}'
+
+        walks_name = generate_walks(SETTING_TMP_DIR, SETTING_DATASET_PATH / 'train.nt',
+                                    walks_name, 4,
+                                    3, 10,
+                                    SETTING_BERT_WALK_GENERATION_MODE)
+
+        # Warning, this reads lines with \n in it. Whitespace splitting takes care of it in the tokenizer.
+        walkspath_file = open(walks_name, 'r')
+        real_walks = [ s for s in [l.split() for l in walkspath_file.readlines()] if len(s) == 7]
+
+        real_walks , real_walks_eval  = train_test_split(real_walks, train_size=0.75, test_size=0.25, random_state=328)
+        walkspath_file.close()
+        entities, predicates, edges, predicate_ix = parse_kg(SETTING_DATASET_PATH / 'train.nt')
+
+        def get_wrong_walks(walks, randomize = True):
+            """
+            Randomize just picks random input. If your dataset has lots of input for a single entity and not many for others
+            you might want to implement a check, wether wrong walks are really wrong ...
+            """
+
+            if randomize:
+                wrong_walks = []
+                for walk in walks:
+                    original_triple = walk[0:4]
+                    random_edge_ix = np.random.randint(0,len(edges),SETTING_BERT_LM_WRONG_SAMPLE_NUMBER)
+
+                    for random_ix in random_edge_ix:
+                        edge = edges[random_ix]
+                        predicate = predicates[predicate_ix[random_ix]]
+                        entity0 = entities[edge[0]]
+                        entity1 = entities[edge[1]]
+                        random_triple = [entity0,predicate,entity1]
+                        wrong_walks.append(original_triple + random_triple)
+
+
+                return wrong_walks
+            else:
+                # Not implemented
+                pass
+
+        def get_split_walks(walks):
+            return [[f"{w[0]} {w[1]} {w[2]}",f"{w[4]} {w[5]} {w[6]}" ] for w in walks]
+
+        wrong_walks = get_wrong_walks(real_walks)
+        wrong_walks_eval = get_wrong_walks(real_walks_eval)
+
+
+        real_walks =  get_split_walks(real_walks)
+        wrong_walks = get_split_walks(wrong_walks)
+
+        real_walks_eval = get_split_walks(real_walks_eval)
+        wrong_walks_eval = get_split_walks(wrong_walks_eval)
+
+        dataset = real_walks + wrong_walks
+        labels = torch.cat((torch.zeros(len(real_walks),dtype=torch.long),torch.ones(len(wrong_walks),dtype=torch.long)))
+        dataset_eval = real_walks_eval + wrong_walks_eval
+        labels_eval = torch.cat((torch.zeros(len(real_walks_eval),dtype=torch.long), torch.ones(len(wrong_walks_eval),dtype=torch.long)))
+
+        print(dataset[0:2])
+
+
+
+
+
     if SETTING_DEBUG:
-        dataset = dataset[0:1000]
-        dataset_eval = dataset_eval[0:100]
+        if SETTING_BERT_DATASET_TYPE == "LM":
+            selection = np.random.randint(0,len(labels),1000)
+            dataset = np.array(dataset)[selection]
+            labels = np.array(labels)[selection]
+
+            selection_eval = np.random.randint(0,len(labels_eval),100)
+            dataset = np.array(dataset_eval)[selection_eval]
+            labels = np.array(labels_eval)[selection_eval]
+
+        else:
+            dataset = dataset[0:1000]
+            dataset_eval = dataset_eval[0:100]
+
         # SETTING_BERT_EPOCHS = 10
         SETTING_BERT_BATCHSIZE = 5000
-
     verbprint(f"example data: {dataset[0:10]}")
     verbprint("Init Model.")
     # Init tokenizer and config from tinybert
@@ -161,11 +240,17 @@ def main(args):
         dataset = DatasetBertTraining_LP(dataset, special_tokens_map, tokenizer=None, max_length=128)
         tz = dataset.get_tokenizer()
         dataset_eval = DatasetBertTraining_LP(dataset_eval, special_tokens_map, tokenizer=tz, max_length=128)
+    elif SETTING_BERT_DATASET_TYPE == 'LM':
+        dataset = DatasetBertTraining_LM(dataset,labels,special_tokens_map,tokenizer = None, max_length = 128)
+        tz = dataset.get_tokenizer()
+        dataset_eval = DatasetBertTraining_LM(dataset_eval,labels_eval,special_tokens_map,tokenizer = None, max_length = 128)
+
+
     else:
         print('Wrong Dataset Option!')
         exit(-1)
 
-    verbprint(f"example data processed: {dataset[0]}")
+    verbprint(f"example data processed: {dataset[0:2]}")
 
     tiny_pretrained = AutoModel.from_pretrained('prajjwal1/bert-tiny')
     tiny_config = tiny_pretrained.config
@@ -184,12 +269,16 @@ def main(args):
 
     #
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
+    print(SETTING_BERT_DATASET_TYPE)
     print(f'cuda available: {torch.cuda.is_available()}')
     if SETTING_BERT_DATASET_TYPE == 'MLM':
         tiny_encoder = BertForTokenClassification(encoder_config)
     elif SETTING_BERT_DATASET_TYPE == 'LP':
         tiny_encoder = BertModel(encoder_config)
+    elif SETTING_BERT_DATASET_TYPE == 'LM':
+        tiny_encoder = BertForNextSentencePrediction(encoder_config)
+        print('heree!',tiny_encoder)
+
     tiny_encoder = tiny_encoder.to(device)
 
 
@@ -217,6 +306,19 @@ def main(args):
                                                                               stop_early_patience=SETTING_STOP_EARLY,
                                                                               stop_early_delta=SETTINGS_STOP_EARLY_DELTA)
 
+    elif SETTING_BERT_DATASET_TYPE == 'LM':
+        tiny_encoder, optimizer, history, profile = train_bert_embeddings_lm(tiny_encoder,
+                                                                                         SETTING_BERT_EPOCHS, dataset,
+                                                                                         dataset_eval,
+                                                                                         SETTING_BERT_BATCHSIZE,
+                                                                                         torch.optim.Adam,
+                                                                                         device,
+                                                                                         SETTING_WORK_FOLDER,
+                                                                                         stop_early_patience=SETTING_STOP_EARLY,
+                                                                                         stop_early_delta=SETTINGS_STOP_EARLY_DELTA)
+        pass
+
+
     # Save data
 
     pd.DataFrame(profile).to_csv(SETTING_DATA_FOLDER / 'performance_profile.csv')
@@ -242,6 +344,9 @@ def main(args):
     tiny_encoder.save_pretrained(SETTING_WORK_FOLDER / "model")
     tz.save(str(SETTING_WORK_FOLDER / "tokenizer.json"))
 
+    if SETTING_BERT_DATASET_TYPE == 'LP':
+        torch.save(classifier.state_dict(SETTING_WORK_FOLDER / "classifier_model"))
+
     with open(SETTING_WORK_FOLDER / 'special_tokens_map.json', 'w', encoding='utf-8') as f:
         json.dump(special_tokens_map, f, ensure_ascii=False, indent=4)
 
@@ -262,6 +367,10 @@ def main(args):
         dataset_test = DatasetBertTraining_LP(dataset_test, special_tokens_map, tokenizer=tz, max_length=128)
         testscore = score_bert_model_lp(tiny_encoder, device, dataset_test, SETTING_BERT_BATCHSIZE, optimizer,
                                                  lossF,classifier)
+    elif SETTING_BERT_DATASET_TYPE == 'LM':
+        pass
+        exit(0)
+
 
 
 

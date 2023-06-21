@@ -18,7 +18,7 @@ class Dataset11(torch.utils.data.Dataset):
         """
         graph: graph to train on
         vec_mapping: function that returns vectos from URIs
-        entities_or_relations: iterable of all entities_or_relations to build fake triples
+        entities_or_relations: iterable of all entities_or_relations to build fake input
         """
 
         self.entities = vec_mapping(np.array(entities))
@@ -80,7 +80,6 @@ class DatasetBertTraining(torch.utils.data.Dataset):
         MLM: Masked language modeling with mask tokens and random replacements
         MASS: MLM with only mask tokens
         TODO LM: Language modeling: predict end/beginning of sentence
-        TODO LP: Link prediction
         """
         self.mask_chance = mask_chance
         self.mask_token_chance = mask_token_chance
@@ -147,6 +146,68 @@ class DatasetBertTraining(torch.utils.data.Dataset):
         return self.word_level_tokenizer
     def get_special_tokens_map(self):
         return self.special_tokens_map
+
+
+
+class DatasetBertTraining_LM(torch.utils.data.Dataset):
+    def __init__(self, input,labels,  special_tokens_map, tokenizer=None, max_length=128):
+        """
+
+        return X = sentence pairs y = (no_samples)
+        """
+
+        self.labels = labels
+        self.special_tokens_map = special_tokens_map
+
+        print(special_tokens_map)
+        if not tokenizer:
+            word_level_tokenizer = Tokenizer(WordLevel(unk_token=special_tokens_map['unk_token']))
+
+            word_level_trainer = WordLevelTrainer(special_tokens=list(special_tokens_map.values()))
+            # Pretokenizer. This is important and could lead to better/worse results!
+            word_level_tokenizer.pre_tokenizer = WhitespaceSplit()
+
+            word_level_tokenizer.train_from_iterator(input, word_level_trainer)
+
+            word_level_tokenizer.post_processor = BertProcessing(
+                ("[SEP]", word_level_tokenizer.token_to_id("[SEP]")),
+                ('[CLS]', word_level_tokenizer.token_to_id('[CLS]')),
+            )
+        else:
+            word_level_tokenizer = tokenizer
+
+
+        self.mask_token_id = word_level_tokenizer.token_to_id(special_tokens_map['mask_token'])
+        pad_token_id = word_level_tokenizer.token_to_id(special_tokens_map['pad_token'])
+
+        word_level_tokenizer.enable_truncation(max_length=max_length)
+        word_level_tokenizer.enable_padding(pad_token=special_tokens_map['pad_token'], pad_id=pad_token_id)
+
+        tokenization = word_level_tokenizer.encode_batch(input)
+
+        self.ids = torch.stack([torch.tensor(e.ids) for e in tokenization])
+        self.type_ids = torch.stack([torch.tensor(e.type_ids) for e in tokenization])
+        self.attention_masks = torch.stack([torch.tensor(e.attention_mask) for e in tokenization])
+
+
+
+
+        # self.attention_masks = torch.stack([torch.ones(len(x)) for x in self.labels])
+        self.special_token_ids = [word_level_tokenizer.token_to_id(x) for x in special_tokens_map.values()]
+
+        self.word_level_tokenizer = word_level_tokenizer
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, i):
+        return (self.ids[i], self.attention_masks[i],self.type_ids[i],self.labels[i])
+
+    def get_tokenizer(self):
+        return self.word_level_tokenizer
+    def get_special_tokens_map(self):
+        return self.special_tokens_map
+
 
 class DatasetBertTraining_LP(torch.utils.data.Dataset):
     def __init__(self, triples, special_tokens_map, tokenizer=None, max_length=128,one_to_n_n=50):
@@ -233,7 +294,7 @@ class DatasetBertTraining_LP(torch.utils.data.Dataset):
 
 def get_1_1_dataset(graph, entities, entity_vec_mapping, corrupt='random'):
     original_triple_len = len(graph)
-    # get triples
+    # get input
     X = list(graph)
     no_t = len(X)
 

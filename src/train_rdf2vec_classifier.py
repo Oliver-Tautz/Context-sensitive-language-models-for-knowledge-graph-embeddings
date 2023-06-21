@@ -28,7 +28,7 @@ def train_rdf2vec_classifier(trainpath='FB15K-237/train.nt',valpath='FB15K-237/v
     word_vectors = Word2Vec.load(rdf2vecmodel).wv
 
 
-    # remove unmatched triples
+    # remove unmatched input
     print(f"removed {clean_graph(g_train,word_vectors)} triples from training set")
     print(f"removed {clean_graph(g_val,word_vectors)} triples from validation set")
 
