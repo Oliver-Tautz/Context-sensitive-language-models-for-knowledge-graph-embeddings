@@ -74,6 +74,11 @@ def main(args):
             SETTING_WORK_FOLDER = Path(
                 f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}_dataset={SETTING_BERT_DATASET_TYPE}_mask-chance={SETTING_BERT_MASK_CHANCE}_mask-token-chance={SETTING_BERT_MASK_TOKEN_CHANCE}")
 
+        if SETTING_BERT_DATASET_TYPE == 'LP':
+            SETTING_BERT_MAXLEN = 5
+        elif SETTING_BERT_DATASET_TYPE == 'LM':
+            SETTING_BERT_MAXLEN = 9
+
         SETTING_PLOT_FOLDER = SETTING_WORK_FOLDER / 'plot'
         SETTING_DATA_FOLDER = SETTING_WORK_FOLDER / 'data'
 
@@ -345,7 +350,7 @@ def main(args):
     tz.save(str(SETTING_WORK_FOLDER / "tokenizer.json"))
 
     if SETTING_BERT_DATASET_TYPE == 'LP':
-        torch.save(classifier.state_dict(SETTING_WORK_FOLDER / "classifier_model"))
+        torch.save(classifier.state_dict(),str(SETTING_WORK_FOLDER / "classifier_model"))
 
     with open(SETTING_WORK_FOLDER / 'special_tokens_map.json', 'w', encoding='utf-8') as f:
         json.dump(special_tokens_map, f, ensure_ascii=False, indent=4)
