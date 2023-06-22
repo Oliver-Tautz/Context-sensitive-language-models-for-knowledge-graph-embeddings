@@ -103,7 +103,6 @@ def main(args):
     verbprint("Loading Dataset")
     if SETTING_BERT_DATASET_TYPE == 'MLM' or SETTING_BERT_DATASET_TYPE == 'MASS':
         if not SETTING_BERT_WALK_USE:
-            print('using input!')
             g_train = Graph()
             g_val = Graph()
 
@@ -217,8 +216,8 @@ def main(args):
             labels = np.array(labels)[selection]
 
             selection_eval = np.random.randint(0,len(labels_eval),100)
-            dataset = np.array(dataset_eval)[selection_eval]
-            labels = np.array(labels_eval)[selection_eval]
+            dataset_eval = np.array(dataset_eval)[selection_eval]
+            labels_eval = np.array(labels_eval)[selection_eval]
 
         else:
             dataset = dataset[0:1000]
@@ -255,7 +254,7 @@ def main(args):
         print('Wrong Dataset Option!')
         exit(-1)
 
-    verbprint(f"example data processed: {dataset[0:2]}")
+    verbprint(f"example data processed: {dataset[0]}")
 
     tiny_pretrained = AutoModel.from_pretrained('prajjwal1/bert-tiny')
     tiny_config = tiny_pretrained.config

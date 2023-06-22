@@ -48,30 +48,53 @@ def random_mask(token, mask_token, vocab_size, mask_chance=0.33, mask_token_chan
         return token, 0
 
 
-def mask_list_of_lists(l, mask_token, vocab_size, special_token_ids, mask_chance = 0.33, mask_token_chance = 0.9):
+def mask_list_of_lists(l, mask_token, vocab_size, special_token_ids, mask_chance=0.33, mask_token_chance=0.9):
     # get random mask for each token, but not for special tokens
     # this is not used ... probably too slow?!
     return torch.tensor(
-        [[random_mask(y, mask_token, vocab_size,mask_chance= mask_chance, mask_token_chance = mask_token_chance) if y not in special_token_ids else y for y in x] for x in l])
+        [[random_mask(y, mask_token, vocab_size, mask_chance=mask_chance,
+                      mask_token_chance=mask_token_chance) if y not in special_token_ids else y for y in x] for x in l])
 
-def lm_mask(ids,mask_token,special_token_ids):
-    #TODO!
+
+def lm_mask(ids, mask_token, special_token_ids):
+    # TODO!
     return None
 
-def mask_list(l, mask_token, vocab_size, special_token_ids, type="MLM",typeargs=None, mask_chance = 0.33, mask_token_chance = 0.9):
+
+def mask_list(l, mask_token, vocab_size, special_token_ids, type="MLM", typeargs=None, mask_chance=0.33,
+              mask_token_chance=0.9, triples=False):
     # get random mask for each token, but not for special tokens
-    if type =="MLM":
-        return torch.tensor(
-            [random_mask(y, mask_token, vocab_size,mask_chance = mask_chance, mask_token_chance= mask_chance) if y not in special_token_ids else (y, 0) for y in l])
-    elif type == "MASS":
-        return torch.tensor(
-            [random_mask(y, mask_token, vocab_size,mask_chance = mask_chance,mask_token_chance=1) if y not in special_token_ids else (y, 0) for y in l])
-    elif type == "LM":
-        lm_mask(l,mask_token,special_token_ids)
+    # if triples: only mask subject or object ... not relation ot both
+
+    if not triples:
+        # Random mask all non special tokens.
+        if type == "MLM":
+            return torch.tensor(
+                [random_mask(y, mask_token, vocab_size, mask_chance=mask_chance,
+                             mask_token_chance=mask_chance) if y not in special_token_ids else (y, 0) for y in l])
+        elif type == "MASS":
+            return torch.tensor(
+                [random_mask(y, mask_token, vocab_size, mask_chance=mask_chance,
+                             mask_token_chance=1) if y not in special_token_ids else (y, 0) for y in l])
+
+    else:
+            # only random mask subject or object but not both and never relation.
+            decide = np.random.rand()
+
+            if decide > 0.5:
+                # mask head
+                return torch.tensor([(l[0],0)] + [random_mask(l[1],mask_token,vocab_size,mask_chance=1,mask_token_chance=1)] + [(l,0) for l in l[2:]])
+            else:
+                return torch.tensor([(l, 0) for l in l[0:3]] + [random_mask(l[3],mask_token,vocab_size,mask_chance=1,mask_token_chance=1)] + [(l[4],0)] )
+
+
+
+
 
 
 class DatasetBertTraining(torch.utils.data.Dataset):
-    def __init__(self, triples, special_tokens_map, tokenizer=None, max_length=128, dataset_type="MLM", mask_chance = 0.33, mask_token_chance = 0.9):
+    def __init__(self, triples, special_tokens_map, tokenizer=None, max_length=128, dataset_type="MLM",
+                 mask_chance=0.33, mask_token_chance=0.9):
         """
 
 
@@ -79,7 +102,6 @@ class DatasetBertTraining(torch.utils.data.Dataset):
 
         MLM: Masked language modeling with mask tokens and random replacements
         MASS: MLM with only mask tokens
-        TODO LM: Language modeling: predict end/beginning of sentence
         """
         self.mask_chance = mask_chance
         self.mask_token_chance = mask_token_chance
@@ -101,7 +123,6 @@ class DatasetBertTraining(torch.utils.data.Dataset):
         else:
             word_level_tokenizer = tokenizer
 
-
         self.mask_token_id = word_level_tokenizer.token_to_id(special_tokens_map['mask_token'])
         pad_token_id = word_level_tokenizer.token_to_id(special_tokens_map['pad_token'])
 
@@ -111,7 +132,15 @@ class DatasetBertTraining(torch.utils.data.Dataset):
         tokenization = word_level_tokenizer.encode_batch(triples)
 
         self.labels = [x.ids for x in tokenization]
+        label_lens = [len(x) for x in self.labels]
+        if max(label_lens) == 5:
+            self.triples = True
+        else:
+            self.triples = False
+
         self.attention_masks = [x.attention_mask for x in tokenization]
+
+        print('here!!!!!!', len(self.labels[0]))
 
         self.labels = torch.tensor(self.labels)
         self.attention_masks = torch.tensor(self.attention_masks)
@@ -128,13 +157,15 @@ class DatasetBertTraining(torch.utils.data.Dataset):
         if self.dataset_type == "MLM":
 
             return mask_list(self.labels[i], self.mask_token_id,
-                             self.word_level_tokenizer.get_vocab_size(), self.special_token_ids), self.attention_masks[
+                             self.word_level_tokenizer.get_vocab_size(), self.special_token_ids, triples=self.triples), \
+            self.attention_masks[
                 i], \
                 self.labels[i]
         elif self.dataset_type == "MASS":
             return mask_list(self.labels[i], self.mask_token_id,
-                                  self.word_level_tokenizer.get_vocab_size(), self.special_token_ids,type='MASS'), \
-            self.attention_masks[i], \
+                             self.word_level_tokenizer.get_vocab_size(), self.special_token_ids, type='MASS',
+                             triples=self.triples), \
+                self.attention_masks[i], \
                 self.labels[i]
 
 
@@ -144,13 +175,13 @@ class DatasetBertTraining(torch.utils.data.Dataset):
 
     def get_tokenizer(self):
         return self.word_level_tokenizer
+
     def get_special_tokens_map(self):
         return self.special_tokens_map
 
 
-
 class DatasetBertTraining_LM(torch.utils.data.Dataset):
-    def __init__(self, input,labels,  special_tokens_map, tokenizer=None, max_length=128):
+    def __init__(self, input, labels, special_tokens_map, tokenizer=None, max_length=128):
         """
 
         return X = sentence pairs y = (no_samples)
@@ -176,7 +207,6 @@ class DatasetBertTraining_LM(torch.utils.data.Dataset):
         else:
             word_level_tokenizer = tokenizer
 
-
         self.mask_token_id = word_level_tokenizer.token_to_id(special_tokens_map['mask_token'])
         pad_token_id = word_level_tokenizer.token_to_id(special_tokens_map['pad_token'])
 
@@ -189,9 +219,6 @@ class DatasetBertTraining_LM(torch.utils.data.Dataset):
         self.type_ids = torch.stack([torch.tensor(e.type_ids) for e in tokenization])
         self.attention_masks = torch.stack([torch.tensor(e.attention_mask) for e in tokenization])
 
-
-
-
         # self.attention_masks = torch.stack([torch.ones(len(x)) for x in self.labels])
         self.special_token_ids = [word_level_tokenizer.token_to_id(x) for x in special_tokens_map.values()]
 
@@ -201,16 +228,17 @@ class DatasetBertTraining_LM(torch.utils.data.Dataset):
         return len(self.labels)
 
     def __getitem__(self, i):
-        return (self.ids[i], self.attention_masks[i],self.type_ids[i],self.labels[i])
+        return (self.ids[i], self.attention_masks[i], self.type_ids[i], self.labels[i])
 
     def get_tokenizer(self):
         return self.word_level_tokenizer
+
     def get_special_tokens_map(self):
         return self.special_tokens_map
 
 
 class DatasetBertTraining_LP(torch.utils.data.Dataset):
-    def __init__(self, triples, special_tokens_map, tokenizer=None, max_length=128,one_to_n_n=50):
+    def __init__(self, triples, special_tokens_map, tokenizer=None, max_length=128, one_to_n_n=50):
         """
 
 
@@ -240,7 +268,6 @@ class DatasetBertTraining_LP(torch.utils.data.Dataset):
         else:
             word_level_tokenizer = tokenizer
 
-
         self.mask_token_id = word_level_tokenizer.token_to_id(special_tokens_map['mask_token'])
         pad_token_id = word_level_tokenizer.token_to_id(special_tokens_map['pad_token'])
 
@@ -256,8 +283,7 @@ class DatasetBertTraining_LP(torch.utils.data.Dataset):
         self.true_triples = torch.tensor(self.true_triples)
         print(self.true_triples)
         # get all entity ids.
-        self.entities = self.true_triples[:,1:4].flatten().unique()
-
+        self.entities = self.true_triples[:, 1:4].flatten().unique()
 
         self.attention_masks = torch.tensor(self.attention_masks)
 
@@ -273,24 +299,26 @@ class DatasetBertTraining_LP(torch.utils.data.Dataset):
 
     def __getitem__(self, i):
         current_triples = self.true_triples[i]
-        if len(current_triples.shape)<2:
+        if len(current_triples.shape) < 2:
             current_triples = current_triples.unsqueeze(0)
         triples_shape = current_triples.shape
 
-        return  current_triples, self.__get_false_triples(current_triples)
+        return current_triples, self.__get_false_triples(current_triples)
 
-    def __get_false_triples(self,true_triples):
+    def __get_false_triples(self, true_triples):
         if len(true_triples.shape) == 1:
             true_triples = [true_triples]
         fake_triples = []
         for i in range(self.one_to_n_n):
-            fake_triples.extend([get_random_corrupted_triple(x,self.entities) for x in true_triples])
+            fake_triples.extend([get_random_corrupted_triple(x, self.entities) for x in true_triples])
         return torch.stack(fake_triples)
 
     def get_tokenizer(self):
         return self.word_level_tokenizer
+
     def get_special_tokens_map(self):
         return self.special_tokens_map
+
 
 def get_1_1_dataset(graph, entities, entity_vec_mapping, corrupt='random'):
     original_triple_len = len(graph)
@@ -401,6 +429,3 @@ def get_bert_simple_dataset(graph):
     tz = dataset.get_tokenizer()
 
     return dataset, tz
-
-
-
