@@ -9,8 +9,8 @@ from utils import choose, PerfTimer
 from sklearn.utils.extmath import cartesian
 import torch
 from rdflib import Graph
-
-
+import lightrdf
+from utils import iter_exception_wrapper
 
 def get_entities(graphs):
     # get subjects and objects
@@ -157,3 +157,41 @@ def parse_kg_to_torch(graph,word_vec_mapping):
     return edges, predicate_ix, entities, predicates, entity_vecs, predicate_vecs
 
 
+def parse_kg_fast(path):
+    entities = dict()
+    predicates = dict()
+    edges = []
+    predicate_ix = []
+
+    parser = lightrdf.Parser()
+
+    f = open(path, 'rb')
+
+    for e1, r, e2 in tqdm(iter_exception_wrapper(parser.parse(f, format='nt'))):
+        if e1 in entities:
+            e1_ix = entities[e1]
+        else:
+            e1_ix = len(entities)
+            entities[e1] = e1_ix
+
+        if e2 in entities:
+            e2_ix = entities[e2]
+        else:
+            e2_ix = len(entities)
+            entities[e2] = e2_ix
+
+        if r in predicates:
+            r_ix = predicates[r]
+        else:
+            r_ix = len(predicates)
+            predicates[r] = r_ix
+
+        edges.append((e1_ix, e2_ix))
+        predicate_ix.append(r_ix)
+    f.close()
+    entities = torch.tensor(entities.keys())
+    predicates = torch.tensor(predicates.keys())
+    edges = torch.tensor(edges)
+    predicate_ix = torch.tensor(predicate_ix)
+
+    return entities, predicates, edges, predicate_ix

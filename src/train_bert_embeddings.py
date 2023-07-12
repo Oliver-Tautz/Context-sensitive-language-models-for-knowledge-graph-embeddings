@@ -30,7 +30,7 @@ from utils_train import train_bert_embeddings_mlm, score_bert_model_mlm, train_b
 from jrdf2vec_walks_for_bert import generate_walks
 from profiler import Profiler
 from sklearn.model_selection import train_test_split
-from utils_graph import parse_kg
+from utils_graph import parse_kg_fast
 
 def main(args):
     try:
@@ -157,7 +157,7 @@ def main(args):
 
         real_walks , real_walks_eval  = train_test_split(real_walks, train_size=0.75, test_size=0.25, random_state=328)
         walkspath_file.close()
-        entities, predicates, edges, predicate_ix = parse_kg(SETTING_DATASET_PATH / 'train.nt')
+        entities, predicates, edges, predicate_ix = parse_kg_fast(SETTING_DATASET_PATH / 'train.nt')
 
         def get_wrong_walks(walks, randomize = True):
             """

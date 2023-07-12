@@ -94,3 +94,14 @@ class PerfTimer():
     def stats_f(self, f):
         return {key: f(value) for key, value in self.stats().items()}
 
+def iter_exception_wrapper(gen):
+    """
+    wrapper to handle exceptions in continuable iterator
+    """
+    while True:
+        try:
+            yield next(gen)
+        except StopIteration:
+            break
+        except Exception as e:
+            print(e) # or whatever kind of logging you want
