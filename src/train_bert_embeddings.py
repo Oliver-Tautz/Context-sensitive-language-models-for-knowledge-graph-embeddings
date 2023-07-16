@@ -26,11 +26,13 @@ from utils_data import DatasetBertTraining, DatasetBertTraining_LP, DatasetBertT
 import pandas as pd
 import shutil
 from utils import verbprint
-from utils_train import train_bert_embeddings_mlm, score_bert_model_mlm, train_bert_embeddings_lp, score_bert_model_lp, train_bert_embeddings_lm
+from utils_train import train_bert_embeddings_mlm, score_bert_model_mlm, train_bert_embeddings_lp, score_bert_model_lp, \
+    train_bert_embeddings_lm
 from jrdf2vec_walks_for_bert import generate_walks
 from profiler import Profiler
 from sklearn.model_selection import train_test_split
-from utils_graph import parse_kg_fast
+from utils_graph import parse_kg_fast, graph_to_string
+
 
 def main(args):
     try:
@@ -38,6 +40,20 @@ def main(args):
         cfg_parser = configparser.ConfigParser(allow_no_value=True)
         cfg_parser.read(args.config)
 
+        if cfg_parser.has_option('TRAIN', 'DATASET_PATH_EVAL'):
+            SETTING_DATASET_PATH_EVAL = Path(cfg_parser['TRAIN']['DATASET_PATH'])
+        else:
+            SETTING_DATASET_PATH_EVAL = None
+
+        if cfg_parser.has_option('TRAIN', 'DATASET_PATH_FILTERFILE'):
+            SETTING_DATASET_PATH_FILTERFILE = Path(cfg_parser['TRAIN']['DATASET_PATH_FILTERFILE'])
+        else:
+            SETTING_DATASET_PATH_FILTERFILE = None
+
+        if cfg_parser.has_option('TRAIN', 'WALK_THREAD_COUNT'):
+            SETTING_WALK_THREAD_COUNT = cfg_parser.getint('TRAIN', 'WALK_THREAD_COUNT')
+        else:
+            SETTING_WALK_THREAD_COUNT = 4
         SETTING_DATASET_PATH = Path(cfg_parser['TRAIN']['DATASET_PATH'])
         SETTING_VECTOR_SIZE = cfg_parser.getint('TRAIN', 'VECTOR_SIZE')
         SETTING_BERT_EPOCHS = cfg_parser.getint('TRAIN', 'BERT_EPOCHS')
@@ -101,26 +117,25 @@ def main(args):
     if args.debug:
         SETTING_DEBUG = True
     verbprint("Loading Dataset")
+    print(SETTING_DATASET_PATH)
     if SETTING_BERT_DATASET_TYPE == 'MLM' or SETTING_BERT_DATASET_TYPE == 'MASS':
         if not SETTING_BERT_WALK_USE:
-            g_train = Graph()
-            g_val = Graph()
 
-            g_train = g_train.parse(SETTING_DATASET_PATH / 'train.nt', format='nt')
-            g_val = g_val.parse(SETTING_DATASET_PATH / 'valid.nt', format='nt')
+            dataset = graph_to_string(SETTING_DATASET_PATH,filterfilepath=SETTING_DATASET_PATH_FILTERFILE)
 
-            # Join input together
-            dataset = [' '.join(x) for x in g_train]
-            dataset_eval = [' '.join(x) for x in g_val]
+            if SETTING_DATASET_PATH_EVAL:
+                dataset_eval = graph_to_string(SETTING_DATASET_PATH,filterfilepath=SETTING_DATASET_PATH_FILTERFILE)
+            else:
+                dataset, dataset_eval = train_test_split(dataset, train_size=0.75, test_size=0.25, random_state=328)
         else:
             # use walks
             # train/test split from train walks as eval graph is not connected.
             walks_name = f'{f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}"}'
 
-            walks_name = generate_walks(SETTING_TMP_DIR, SETTING_DATASET_PATH / 'train.nt',
-                                        walks_name, 4,
+            walks_name = generate_walks(SETTING_TMP_DIR, SETTING_DATASET_PATH,
+                                        walks_name, SETTING_WALK_THREAD_COUNT,
                                         SETTING_BERT_WALK_DEPTH, SETTING_BERT_WALK_COUNT,
-                                        SETTING_BERT_WALK_GENERATION_MODE)
+                                        SETTING_BERT_WALK_GENERATION_MODE, light=SETTING_DATASET_PATH_FILTERFILE)
 
             # Warning, this reads lines with \n in it. Whitespace splitting takes care of it in the tokenizer.
             walkspath_file = open(walks_name, 'r')
@@ -131,35 +146,33 @@ def main(args):
 
             print(len(dataset), len(dataset_eval))
     elif SETTING_BERT_DATASET_TYPE == "LP":
-        g_train = Graph()
-        g_val = Graph()
 
-        g_train = g_train.parse(SETTING_DATASET_PATH / 'train.nt', format='nt')
-        g_val = g_val.parse(SETTING_DATASET_PATH / 'valid.nt', format='nt')
+        dataset = graph_to_string(SETTING_DATASET_PATH,filterfilepath=SETTING_DATASET_PATH_FILTERFILE)
 
-        # Join input together
-        dataset = [' '.join(x) for x in g_train]
-        dataset_eval = [' '.join(x) for x in g_val]
+        if SETTING_DATASET_PATH_EVAL:
+            dataset_eval = graph_to_string(SETTING_DATASET_PATH,filterfilepath=SETTING_DATASET_PATH_FILTERFILE)
+        else:
+            dataset, dataset_eval = train_test_split(dataset, train_size=0.75, test_size=0.25, random_state=328)
+
 
     elif SETTING_BERT_DATASET_TYPE == "LM":
 
-
         walks_name = f'{f"{SETTING_BERT_NAME}_ep{SETTING_BERT_EPOCHS}_vec{SETTING_VECTOR_SIZE}"}'
 
-        walks_name = generate_walks(SETTING_TMP_DIR, SETTING_DATASET_PATH / 'train.nt',
-                                    walks_name, 4,
+        walks_name = generate_walks(SETTING_TMP_DIR, SETTING_DATASET_PATH,
+                                    walks_name, SETTING_WALK_THREAD_COUNT,
                                     3, 10,
-                                    SETTING_BERT_WALK_GENERATION_MODE)
+                                    SETTING_BERT_WALK_GENERATION_MODE, light=SETTING_DATASET_PATH_FILTERFILE)
 
         # Warning, this reads lines with \n in it. Whitespace splitting takes care of it in the tokenizer.
         walkspath_file = open(walks_name, 'r')
-        real_walks = [ s for s in [l.split() for l in walkspath_file.readlines()] if len(s) == 7]
+        real_walks = [s for s in [l.split() for l in walkspath_file.readlines()] if len(s) == 7]
 
-        real_walks , real_walks_eval  = train_test_split(real_walks, train_size=0.75, test_size=0.25, random_state=328)
+        real_walks, real_walks_eval = train_test_split(real_walks, train_size=0.75, test_size=0.25, random_state=328)
         walkspath_file.close()
-        entities, predicates, edges, predicate_ix = parse_kg_fast(SETTING_DATASET_PATH / 'train.nt')
+        entities, predicates, edges, predicate_ix = parse_kg_fast(SETTING_DATASET_PATH)
 
-        def get_wrong_walks(walks, randomize = True):
+        def get_wrong_walks(walks, randomize=True):
             """
             Randomize just picks random input. If your dataset has lots of input for a single entity and not many for others
             you might want to implement a check, wether wrong walks are really wrong ...
@@ -169,16 +182,15 @@ def main(args):
                 wrong_walks = []
                 for walk in walks:
                     original_triple = walk[0:4]
-                    random_edge_ix = np.random.randint(0,len(edges),SETTING_BERT_LM_WRONG_SAMPLE_NUMBER)
+                    random_edge_ix = np.random.randint(0, len(edges), SETTING_BERT_LM_WRONG_SAMPLE_NUMBER)
 
                     for random_ix in random_edge_ix:
                         edge = edges[random_ix]
                         predicate = predicates[predicate_ix[random_ix]]
                         entity0 = entities[edge[0]]
                         entity1 = entities[edge[1]]
-                        random_triple = [entity0,predicate,entity1]
+                        random_triple = [entity0, predicate, entity1]
                         wrong_walks.append(original_triple + random_triple)
-
 
                 return wrong_walks
             else:
@@ -186,36 +198,33 @@ def main(args):
                 pass
 
         def get_split_walks(walks):
-            return [[f"{w[0]} {w[1]} {w[2]}",f"{w[4]} {w[5]} {w[6]}" ] for w in walks]
+            return [[f"{w[0]} {w[1]} {w[2]}", f"{w[4]} {w[5]} {w[6]}"] for w in walks]
 
         wrong_walks = get_wrong_walks(real_walks)
         wrong_walks_eval = get_wrong_walks(real_walks_eval)
 
-
-        real_walks =  get_split_walks(real_walks)
+        real_walks = get_split_walks(real_walks)
         wrong_walks = get_split_walks(wrong_walks)
 
         real_walks_eval = get_split_walks(real_walks_eval)
         wrong_walks_eval = get_split_walks(wrong_walks_eval)
 
         dataset = real_walks + wrong_walks
-        labels = torch.cat((torch.zeros(len(real_walks),dtype=torch.long),torch.ones(len(wrong_walks),dtype=torch.long)))
+        labels = torch.cat(
+            (torch.zeros(len(real_walks), dtype=torch.long), torch.ones(len(wrong_walks), dtype=torch.long)))
         dataset_eval = real_walks_eval + wrong_walks_eval
-        labels_eval = torch.cat((torch.zeros(len(real_walks_eval),dtype=torch.long), torch.ones(len(wrong_walks_eval),dtype=torch.long)))
+        labels_eval = torch.cat(
+            (torch.zeros(len(real_walks_eval), dtype=torch.long), torch.ones(len(wrong_walks_eval), dtype=torch.long)))
 
         print(dataset[0:2])
 
-
-
-
-
     if SETTING_DEBUG:
         if SETTING_BERT_DATASET_TYPE == "LM":
-            selection = np.random.randint(0,len(labels),1000)
+            selection = np.random.randint(0, len(labels), 1000)
             dataset = np.array(dataset)[selection]
             labels = np.array(labels)[selection]
 
-            selection_eval = np.random.randint(0,len(labels_eval),100)
+            selection_eval = np.random.randint(0, len(labels_eval), 100)
             dataset_eval = np.array(dataset_eval)[selection_eval]
             labels_eval = np.array(labels_eval)[selection_eval]
 
@@ -245,9 +254,10 @@ def main(args):
         tz = dataset.get_tokenizer()
         dataset_eval = DatasetBertTraining_LP(dataset_eval, special_tokens_map, tokenizer=tz, max_length=128)
     elif SETTING_BERT_DATASET_TYPE == 'LM':
-        dataset = DatasetBertTraining_LM(dataset,labels,special_tokens_map,tokenizer = None, max_length = 128)
+        dataset = DatasetBertTraining_LM(dataset, labels, special_tokens_map, tokenizer=None, max_length=128)
         tz = dataset.get_tokenizer()
-        dataset_eval = DatasetBertTraining_LM(dataset_eval,labels_eval,special_tokens_map,tokenizer = None, max_length = 128)
+        dataset_eval = DatasetBertTraining_LM(dataset_eval, labels_eval, special_tokens_map, tokenizer=None,
+                                              max_length=128)
 
 
     else:
@@ -281,11 +291,9 @@ def main(args):
         tiny_encoder = BertModel(encoder_config)
     elif SETTING_BERT_DATASET_TYPE == 'LM':
         tiny_encoder = BertForNextSentencePrediction(encoder_config)
-        print('heree!',tiny_encoder)
+        print('heree!', tiny_encoder)
 
     tiny_encoder = tiny_encoder.to(device)
-
-
 
     verbprint("Starting training")
 
@@ -295,7 +303,8 @@ def main(args):
 
     if SETTING_BERT_DATASET_TYPE == 'MLM':
         lossF = torch.nn.CrossEntropyLoss()
-        tiny_encoder, optimizer, history, profile = train_bert_embeddings_mlm(tiny_encoder, SETTING_BERT_EPOCHS, dataset,
+        tiny_encoder, optimizer, history, profile = train_bert_embeddings_mlm(tiny_encoder, SETTING_BERT_EPOCHS,
+                                                                              dataset,
                                                                               dataset_eval, SETTING_BERT_BATCHSIZE,
                                                                               torch.optim.Adam, lossF, device,
                                                                               SETTING_WORK_FOLDER,
@@ -303,25 +312,27 @@ def main(args):
                                                                               stop_early_delta=SETTINGS_STOP_EARLY_DELTA)
     elif SETTING_BERT_DATASET_TYPE == 'LP':
         lossF = torch.nn.BCEWithLogitsLoss()
-        tiny_encoder, optimizer, history, profile, classifier = train_bert_embeddings_lp(tiny_encoder, SETTING_BERT_EPOCHS, dataset,
-                                                                              dataset_eval, SETTING_BERT_BATCHSIZE,
-                                                                              torch.optim.Adam, lossF, device,
-                                                                              SETTING_WORK_FOLDER,
-                                                                              stop_early_patience=SETTING_STOP_EARLY,
-                                                                              stop_early_delta=SETTINGS_STOP_EARLY_DELTA)
-
-    elif SETTING_BERT_DATASET_TYPE == 'LM':
-        tiny_encoder, optimizer, history, profile = train_bert_embeddings_lm(tiny_encoder,
+        tiny_encoder, optimizer, history, profile, classifier = train_bert_embeddings_lp(tiny_encoder,
                                                                                          SETTING_BERT_EPOCHS, dataset,
                                                                                          dataset_eval,
                                                                                          SETTING_BERT_BATCHSIZE,
-                                                                                         torch.optim.Adam,
+                                                                                         torch.optim.Adam, lossF,
                                                                                          device,
                                                                                          SETTING_WORK_FOLDER,
                                                                                          stop_early_patience=SETTING_STOP_EARLY,
                                                                                          stop_early_delta=SETTINGS_STOP_EARLY_DELTA)
-        pass
 
+    elif SETTING_BERT_DATASET_TYPE == 'LM':
+        tiny_encoder, optimizer, history, profile = train_bert_embeddings_lm(tiny_encoder,
+                                                                             SETTING_BERT_EPOCHS, dataset,
+                                                                             dataset_eval,
+                                                                             SETTING_BERT_BATCHSIZE,
+                                                                             torch.optim.Adam,
+                                                                             device,
+                                                                             SETTING_WORK_FOLDER,
+                                                                             stop_early_patience=SETTING_STOP_EARLY,
+                                                                             stop_early_delta=SETTINGS_STOP_EARLY_DELTA)
+        pass
 
     # Save data
 
@@ -349,39 +360,12 @@ def main(args):
     tz.save(str(SETTING_WORK_FOLDER / "tokenizer.json"))
 
     if SETTING_BERT_DATASET_TYPE == 'LP':
-        torch.save(classifier.state_dict(),str(SETTING_WORK_FOLDER / "classifier_model"))
+        torch.save(classifier.state_dict(), str(SETTING_WORK_FOLDER / "classifier_model"))
 
     with open(SETTING_WORK_FOLDER / 'special_tokens_map.json', 'w', encoding='utf-8') as f:
         json.dump(special_tokens_map, f, ensure_ascii=False, indent=4)
 
-    # compute test score
-    g_test = Graph()
-    g_test = g_test.parse(SETTING_DATASET_PATH / 'test.nt', format='nt')
-    dataset_test = [' '.join(x) for x in g_test]
 
-    if SETTING_DEBUG:
-        dataset_test = dataset_test[0:1000]
-
-    if SETTING_BERT_DATASET_TYPE == 'MLM':
-        dataset_test = DatasetBertTraining(dataset_test, special_tokens_map, tokenizer=tz,
-                                           dataset_type=SETTING_BERT_DATASET_TYPE, mask_chance=SETTING_BERT_MASK_CHANCE,
-                                           mask_token_chance=SETTING_BERT_MASK_TOKEN_CHANCE)
-        testscore = score_bert_model_mlm(tiny_encoder, device, dataset_test, SETTING_BERT_BATCHSIZE, optimizer, lossF)
-    elif SETTING_BERT_DATASET_TYPE == 'LP':
-        dataset_test = DatasetBertTraining_LP(dataset_test, special_tokens_map, tokenizer=tz, max_length=128)
-        testscore = score_bert_model_lp(tiny_encoder, device, dataset_test, SETTING_BERT_BATCHSIZE, optimizer,
-                                                 lossF,classifier)
-    elif SETTING_BERT_DATASET_TYPE == 'LM':
-        pass
-        exit(0)
-
-
-
-
-    testscorefile = open(SETTING_DATA_FOLDER / 'testscore.txt', mode='w')
-    testscorefile.write(str(testscore))
-    testscorefile.close()
-    print('testloss = ' + str(testscore))
 
 
 if __name__ == '__main__':

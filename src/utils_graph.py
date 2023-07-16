@@ -4,7 +4,7 @@ import itertools
 
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-
+import urllib
 from utils import choose, PerfTimer
 from sklearn.utils.extmath import cartesian
 import torch
@@ -157,7 +157,7 @@ def parse_kg_to_torch(graph,word_vec_mapping):
     return edges, predicate_ix, entities, predicates, entity_vecs, predicate_vecs
 
 
-def parse_kg_fast(path):
+def parse_kg_fast(path, filterpath=None):
     entities = dict()
     predicates = dict()
     edges = []
@@ -165,9 +165,21 @@ def parse_kg_fast(path):
 
     parser = lightrdf.Parser()
 
+    if filterpath:
+        filterset = get_filterset(filterpath)
+
     f = open(path, 'rb')
 
     for e1, r, e2 in tqdm(iter_exception_wrapper(parser.parse(f, format='nt'))):
+
+        e1 = get_entity_example(e1)
+        e2 = get_entity_example(e2)
+        r = get_entity_example(r)
+
+        if filterpath:
+            if not (e1 in filterset or e2 in  filterset):
+                continue
+
         if e1 in entities:
             e1_ix = entities[e1]
         else:
@@ -195,3 +207,48 @@ def parse_kg_fast(path):
     predicate_ix = torch.tensor(predicate_ix)
 
     return entities, predicates, edges, predicate_ix
+
+def get_entity(url):
+    return urllib.parse.urlparse(url.strip()).path
+def get_entity_example(url):
+    return f"http://example.org{get_entity(url)}"
+
+
+def get_filterset(path):
+    entity_file = open(path, 'r')
+    entities = entity_file.readlines()
+    for i, e in enumerate(entities):
+        parse_result = urllib.parse.urlparse(e.strip())
+        if not parse_result.scheme:
+            parse_result = urllib.parse.urlparse(e.strip()[1:-1])
+
+        entities[i] = f"http://example.org{parse_result.path}"
+    return set(entities)
+
+def graph_to_string(path,filterfilepath = None):
+    parser = lightrdf.Parser()
+    f = open(path, 'rb')
+    tp = []
+    skipped = 0
+    taken = 0
+
+    if filterfilepath:
+        filterset = get_filterset(filterfilepath)
+
+    for e1, r, e2 in tqdm(iter_exception_wrapper(parser.parse(f, format='nt', base_iri=None))):
+
+
+        e1 = get_entity_example(e1)
+        e2 = get_entity_example(e2)
+        r = get_entity_example(r)
+
+
+        if not (e1 in filterset or e2 in filterset):
+            skipped+=1
+            continue
+        t = [get_entity_example(x[1:-1]) for x in [e1,r,e2]]
+        tp.append(' '.join(t))
+        taken +=1
+
+    print(f"filtered {skipped / (skipped+taken)} of the dataset.")
+    return tp

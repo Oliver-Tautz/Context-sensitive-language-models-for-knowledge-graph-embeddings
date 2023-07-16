@@ -2,16 +2,29 @@ from utils import run_str
 from pathlib import Path
 import os
 
-def generate_walks(tmpdir, dataset_file, outname, nproc, depth, no_walks_per_entity, generation_mode="RANDOM_WALKS_DUPLICATE_FREE"):
-    # if file does not ecists or is empty ...
+def generate_walks(tmpdir, dataset_file, outname, nproc, depth, no_walks_per_entity, generation_mode="RANDOM_WALKS_DUPLICATE_FREE",light=None):
+    # if file does not exist or is empty ...
+    print(
+        f"java -jar jrdf2vec-1.3-SNAPSHOT.jar -walkDirectory {str(Path(tmpdir))} -light {light} -graph {dataset_file} -onlyWalks -threads {nproc} -depth {depth} -numberOfWalks {no_walks_per_entity} -walkGenerationMode {generation_mode}")
     if not Path(f'{tmpdir}/{outname}_{generation_mode}_d={depth}_w={no_walks_per_entity}.txt').is_file() or os.stat(f'{tmpdir}/{outname}_{generation_mode}_d={depth}_w={no_walks_per_entity}.txt') == 0:
+        print('')
         if not Path('./jrdf2vec-1.3-SNAPSHOT.jar').is_file():
             run_str("wget -q -nc https://raw.githubusercontent.com/dwslab/jRDF2Vec/jars/jars/jrdf2vec-1.3-SNAPSHOT.jar")
         print(tmpdir)
-        print(f"java -jar jrdf2vec-1.3-SNAPSHOT.jar -walkDirectory {str(Path(tmpdir))} -graph {dataset_file} -onlyWalks -threads {nproc} -depth {depth} -numberOfWalks {no_walks_per_entity} -walkGenerationMode {generation_mode}")
-        run_str(
-            f"java -jar jrdf2vec-1.3-SNAPSHOT.jar -walkDirectory {str(Path(tmpdir))} -graph {dataset_file} -onlyWalks -threads {nproc} -depth {depth} -numberOfWalks {no_walks_per_entity} -walkGenerationMode {generation_mode}")
-        run_str(f"java -jar jrdf2vec-1.3-SNAPSHOT.jar -walkDirectory {str(Path(tmpdir))} -mergeWalks -o {tmpdir}/{outname}_{generation_mode}_d={depth}_w={no_walks_per_entity}.txt")
+
+        if light:
+            print(
+                f"java -Xmx100g -jar jrdf2vec-1.3-SNAPSHOT.jar -walkDirectory {str(Path(tmpdir))} -light {light} -graph {dataset_file} -onlyWalks -threads {nproc} -depth {depth} -numberOfWalks {no_walks_per_entity} -walkGenerationMode {generation_mode}")
+            run_str(
+                f"java -Xmx100g -jar jrdf2vec-1.3-SNAPSHOT.jar -walkDirectory {str(Path(tmpdir))} -light {light} -graph {dataset_file} -onlyWalks -threads {nproc} -depth {depth} -numberOfWalks {no_walks_per_entity} -walkGenerationMode {generation_mode}")
+            run_str(
+                f"java -Xmx100g -jar jrdf2vec-1.3-SNAPSHOT.jar -walkDirectory {str(Path(tmpdir))} -mergeWalks -o {tmpdir}/{outname}_{generation_mode}_d={depth}_w={no_walks_per_entity}.txt")
+        else:
+
+            print(f"java -Xmx100g -jar jrdf2vec-1.3-SNAPSHOT.jar -walkDirectory {str(Path(tmpdir))} -graph {dataset_file} -onlyWalks -threads {nproc} -depth {depth} -numberOfWalks {no_walks_per_entity} -walkGenerationMode {generation_mode}")
+            run_str(
+                f"java -Xmx100g -jar jrdf2vec-1.3-SNAPSHOT.jar -walkDirectory {str(Path(tmpdir))} -graph {dataset_file} -onlyWalks -threads {nproc} -depth {depth} -numberOfWalks {no_walks_per_entity} -walkGenerationMode {generation_mode}")
+            run_str(f"java -jar jrdf2vec-1.3-SNAPSHOT.jar -walkDirectory {str(Path(tmpdir))} -mergeWalks -o {tmpdir}/{outname}_{generation_mode}_d={depth}_w={no_walks_per_entity}.txt")
 
         # remove unused tmpfiles
         for file in os.listdir(tmpdir):
