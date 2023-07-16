@@ -11,7 +11,7 @@ import torch
 from rdflib import Graph
 import lightrdf
 from utils import iter_exception_wrapper
-
+from utils_bert_models import BertKGEmb
 def get_entities(graphs):
     # get subjects and objects
     entities = []
@@ -201,17 +201,36 @@ def parse_kg_fast(path, filterpath=None):
         edges.append((e1_ix, e2_ix))
         predicate_ix.append(r_ix)
     f.close()
-    entities = torch.tensor(entities.keys())
-    predicates = torch.tensor(predicates.keys())
+    entities = list(entities.keys())
+    predicates = list(predicates.keys())
     edges = torch.tensor(edges)
     predicate_ix = torch.tensor(predicate_ix)
 
     return entities, predicates, edges, predicate_ix
 
 def get_entity(url):
-    return urllib.parse.urlparse(url.strip()).path
+    return urllib.parse.urlparse(url.strip()[1:-1]).path
+
+def get_base_url(url):
+    parsed =urllib.parse.urlparse(url.strip()[1:-1])
+    url = f"{parsed.scheme}//{parsed.netloc}"
+
+    return url
 def get_entity_example(url):
     return f"http://example.org{get_entity(url)}"
+
+def get_base_urls(kgpath):
+    f = open(kgpath, 'rb')
+
+    skipped = 0
+    taken = 0
+
+    parser = lightrdf.Parser()
+
+    for e1, r, e2 in tqdm(iter_exception_wrapper(parser.parse(f, format='nt', base_iri=None))):
+        f.close()
+        return get_base_url(e1), get_base_url(r)
+
 
 
 def get_filterset(path):
@@ -226,6 +245,10 @@ def get_filterset(path):
     return set(entities)
 
 def graph_to_string(path,filterfilepath = None):
+
+    entities_base_urls = []
+    predicate_base_urls = []
+
     parser = lightrdf.Parser()
     f = open(path, 'rb')
     tp = []
@@ -246,9 +269,42 @@ def graph_to_string(path,filterfilepath = None):
         if not (e1 in filterset or e2 in filterset):
             skipped+=1
             continue
-        t = [get_entity_example(x[1:-1]) for x in [e1,r,e2]]
+        t = [get_entity_example(x) for x in [e1,r,e2]]
         tp.append(' '.join(t))
         taken +=1
 
     print(f"filtered {skipped / (skipped+taken)} of the dataset.")
     return tp
+
+
+def get_embeddings_from_kg(kgpath,modelpath):
+    entity_base_url , predicate_base_url = get_base_urls(kgpath)
+    entities, predicates, edges, predicate_ix = parse_kg_fast(kgpath)
+    bert = BertKGEmb(modelpath)
+    entity_embs = bert.get_embeddings(entities)
+    predicate_embs = bert.get_embeddings(predicates)
+
+
+    entities = [f"{entity_base_url}{get_entity(x)}" for x in entities]
+    predicates = [f"{predicate_base_url}{get_entity(x)}" for x in predicates]
+
+    entity_embs = dict(zip(entities,entity_embs))
+    predicate_embs = dict(zip(predicates,predicate_embs))
+    entity_embs.update(predicate_embs)
+    return entity_embs
+
+
+def write_vectors_to_file(dic, vec_filepath):
+    f = open(vec_filepath, 'w')
+    for k, v in dic.items():
+        f.write(k)
+        f.write(" ")
+        for x in v:
+            f.write(f"{x.item():f} ")
+        f.write("\n")
+
+
+def write_vector_file(kg_path, bert_path, vectorfile_path):
+    embs = get_embeddings_from_kg(kg_path, bert_path)
+    write_vectors_to_file(embs, vectorfile_path)
+
