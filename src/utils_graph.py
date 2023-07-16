@@ -172,9 +172,10 @@ def parse_kg_fast(path, filterpath=None):
 
     for e1, r, e2 in tqdm(iter_exception_wrapper(parser.parse(f, format='nt'))):
 
-        e1 = get_entity_example(e1)
-        e2 = get_entity_example(e2)
-        r = get_entity_example(r)
+        e1 = e1[1:-1]
+        e2 = e2[1:-1]
+        r = r[1:-1]
+
 
         if filterpath:
             if not (e1 in filterset or e2 in  filterset):
@@ -216,8 +217,6 @@ def get_base_url(url):
     url = f"{parsed.scheme}//{parsed.netloc}"
 
     return url
-def get_entity_example(url):
-    return f"http://example.org{get_entity(url)}"
 
 def get_base_urls(kgpath):
     f = open(kgpath, 'rb')
@@ -241,7 +240,7 @@ def get_filterset(path):
         if not parse_result.scheme:
             parse_result = urllib.parse.urlparse(e.strip()[1:-1])
 
-        entities[i] = f"http://example.org{parse_result.path}"
+        entities[i] = parse_result.geturl()
     return set(entities)
 
 def graph_to_string(path,filterfilepath = None):
@@ -260,16 +259,17 @@ def graph_to_string(path,filterfilepath = None):
 
     for e1, r, e2 in tqdm(iter_exception_wrapper(parser.parse(f, format='nt', base_iri=None))):
 
-
-        e1 = get_entity_example(e1)
-        e2 = get_entity_example(e2)
-        r = get_entity_example(r)
+        # remove < and >
+        e1 = e1[1:-1]
+        e2 = e2[1:-1]
+        r = r[1:-1]
 
 
         if not (e1 in filterset or e2 in filterset):
             skipped+=1
             continue
-        t = [get_entity_example(x) for x in [e1,r,e2]]
+
+        t = [x for x in [e1,r,e2]]
         tp.append(' '.join(t))
         taken +=1
 
@@ -278,15 +278,10 @@ def graph_to_string(path,filterfilepath = None):
 
 
 def get_embeddings_from_kg(kgpath,modelpath):
-    entity_base_url , predicate_base_url = get_base_urls(kgpath)
     entities, predicates, edges, predicate_ix = parse_kg_fast(kgpath)
     bert = BertKGEmb(modelpath)
     entity_embs = bert.get_embeddings(entities)
     predicate_embs = bert.get_embeddings(predicates)
-
-
-    entities = [f"{entity_base_url}{get_entity(x)}" for x in entities]
-    predicates = [f"{predicate_base_url}{get_entity(x)}" for x in predicates]
 
     entity_embs = dict(zip(entities,entity_embs))
     predicate_embs = dict(zip(predicates,predicate_embs))
