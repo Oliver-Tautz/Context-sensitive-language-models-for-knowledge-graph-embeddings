@@ -3,7 +3,7 @@ import torch
 from transformers import PreTrainedTokenizerFast, AutoModel
 from pathlib import Path
 from utils import batch, merge_lists, run_str
-from utils_graph import parse_kg
+from utils_graph import parse_kg,parse_kg_fast
 from random import randint
 from tqdm import tqdm, trange
 import json
@@ -12,6 +12,16 @@ import urllib.request
 import gdown
 import zipfile
 
+def get_embeddings_from_kg(kgpath,modelpath):
+    entities, predicates, edges, predicate_ix = parse_kg_fast(kgpath)
+    bert = BertKGEmb(modelpath)
+    entity_embs = bert.get_embeddings(entities)
+    predicate_embs = bert.get_embeddings(predicates)
+
+    entity_embs = dict(zip(entities,entity_embs))
+    predicate_embs = dict(zip(predicates,predicate_embs))
+    entity_embs.update(predicate_embs)
+    return entity_embs
 
 class BertKGEmb():
     def __init__(self, path, datapath=None, depth=3, use_best_eval=False, device=torch.device('cpu'), mode=None):
@@ -53,7 +63,7 @@ class BertKGEmb():
                 datapath = "./FB15K-237/train.nt"
 
             # get representation of graph
-            entities, predicates, edges, edge_type = parse_kg(datapath)
+            entities, predicates, edges, edge_type = parse_kg_fast(datapath)
 
             # preprocess datapath into ent_tokens, rel_tokens, edges
 

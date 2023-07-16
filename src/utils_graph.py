@@ -277,16 +277,7 @@ def graph_to_string(path,filterfilepath = None):
     return tp
 
 
-def get_embeddings_from_kg(kgpath,modelpath):
-    entities, predicates, edges, predicate_ix = parse_kg_fast(kgpath)
-    bert = BertKGEmb(modelpath)
-    entity_embs = bert.get_embeddings(entities)
-    predicate_embs = bert.get_embeddings(predicates)
 
-    entity_embs = dict(zip(entities,entity_embs))
-    predicate_embs = dict(zip(predicates,predicate_embs))
-    entity_embs.update(predicate_embs)
-    return entity_embs
 
 
 def write_vectors_to_file(dic, vec_filepath):
