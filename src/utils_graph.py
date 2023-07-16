@@ -11,7 +11,6 @@ import torch
 from rdflib import Graph
 import lightrdf
 from utils import iter_exception_wrapper
-from utils_bert_models import BertKGEmb
 def get_entities(graphs):
     # get subjects and objects
     entities = []
