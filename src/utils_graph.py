@@ -263,10 +263,10 @@ def graph_to_string(path,filterfilepath = None):
         e2 = e2[1:-1]
         r = r[1:-1]
 
-
-        if not (e1 in filterset or e2 in filterset):
-            skipped+=1
-            continue
+        if filterfilepath:
+            if not (e1 in filterset or e2 in filterset):
+                skipped+=1
+                continue
 
         t = [x for x in [e1,r,e2]]
         tp.append(' '.join(t))
@@ -279,17 +279,5 @@ def graph_to_string(path,filterfilepath = None):
 
 
 
-def write_vectors_to_file(dic, vec_filepath):
-    f = open(vec_filepath, 'w')
-    for k, v in dic.items():
-        f.write(k)
-        f.write(" ")
-        for x in v:
-            f.write(f"{x.item():f} ")
-        f.write("\n")
 
-
-def write_vector_file(kg_path, bert_path, vectorfile_path):
-    embs = get_embeddings_from_kg(kg_path, bert_path)
-    write_vectors_to_file(embs, vectorfile_path)
 

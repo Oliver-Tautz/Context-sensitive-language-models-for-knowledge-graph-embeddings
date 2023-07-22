@@ -40,6 +40,10 @@ def main(args):
         cfg_parser = configparser.ConfigParser(allow_no_value=True)
         cfg_parser.read(args.config)
 
+
+        if cfg_parser.has_option('TRAIN', 'FULL_BERT'):
+            SETTING_FULL_BERT = cfg_parser.getboolean('TRAIN','FULL_BERT')
+
         if cfg_parser.has_option('TRAIN', 'DATASET_PATH_EVAL'):
             SETTING_DATASET_PATH_EVAL = Path(cfg_parser['TRAIN']['DATASET_PATH'])
         else:
@@ -266,18 +270,38 @@ def main(args):
 
     verbprint(f"example data processed: {dataset[0]}")
 
+
     tiny_pretrained = AutoModel.from_pretrained('prajjwal1/bert-tiny')
+
+    if SETTING_FULL_BERT:
+        tiny_pretrained = AutoModel.from_pretrained('bert-base-uncased')
+
     tiny_config = tiny_pretrained.config
 
     # Change parameters
+
+
     tiny_config._name_or_path = "otautz/tiny"
+
+    if SETTING_FULL_BERT:
+        "otautz/full"
+
     encoder_config = copy.copy(tiny_config)
     encoder_config.is_decoder = False
     encoder_config.add_cross_attention = False
     encoder_config.num_labels = tz.get_vocab_size()
-    encoder_config.hidden_size = SETTING_VECTOR_SIZE
+
     encoder_config.max_position_embeddings = SETTING_BERT_MAXLEN
     encoder_config.classifier_dropout = SETTING_BERT_CLASSIFIER_DROPOUT
+
+    # fix hidden_size == N*attention_heads
+
+    num_attention_heads = encoder_config.num_attention_heads
+    if SETTING_VECTOR_SIZE % num_attention_heads != 0 :
+        SETTING_VECTOR_SIZE =  SETTING_VECTOR_SIZE + (num_attention_heads -  SETTING_VECTOR_SIZE % num_attention_heads)
+
+
+    encoder_config.hidden_size = SETTING_VECTOR_SIZE
 
     del tiny_pretrained
 

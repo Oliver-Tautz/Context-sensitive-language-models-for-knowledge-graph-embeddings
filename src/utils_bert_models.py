@@ -12,16 +12,7 @@ import urllib.request
 import gdown
 import zipfile
 
-def get_embeddings_from_kg(kgpath,modelpath):
-    entities, predicates, edges, predicate_ix = parse_kg_fast(kgpath)
-    bert = BertKGEmb(modelpath)
-    entity_embs = bert.get_embeddings(entities)
-    predicate_embs = bert.get_embeddings(predicates)
 
-    entity_embs = dict(zip(entities,entity_embs))
-    predicate_embs = dict(zip(predicates,predicate_embs))
-    entity_embs.update(predicate_embs)
-    return entity_embs
 
 class BertKGEmb():
     def __init__(self, path, datapath=None, depth=3, use_best_eval=False, device=torch.device('cpu'), mode=None):
@@ -130,6 +121,7 @@ class BertKGEmb():
 
                 batches = []
                 for i, m in zip(ids, masks):
+                    print(i.shape,m.shape)
                     batches.append(self.model(input_ids=i, attention_mask=m)['last_hidden_state'][:, column])
                 embeddings = torch.cat(batches)
 
