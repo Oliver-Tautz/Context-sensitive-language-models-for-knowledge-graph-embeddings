@@ -159,7 +159,7 @@ def train_bert_embeddings_mlm(model, epochs, dataset, dataset_eval, batchsize, o
             batch_labels_no_sequence = batch_labels.flatten().to(device)
             batch_mask = (inputs[:, :, 1] > 0).flatten().to(device)
 
-            print(logits_no_sequence[batch_mask][0])
+           # print(logits_no_sequence[batch_mask][0])
             loss = lossF(logits_no_sequence[batch_mask], batch_labels_no_sequence[batch_mask])
 
             profiler.timer_stop('loss')
