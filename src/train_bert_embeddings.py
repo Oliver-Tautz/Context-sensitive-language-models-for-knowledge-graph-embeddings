@@ -43,6 +43,8 @@ def main(args):
 
         if cfg_parser.has_option('TRAIN', 'FULL_BERT'):
             SETTING_FULL_BERT = cfg_parser.getboolean('TRAIN','FULL_BERT')
+        else:
+            SETTING_FULL_BERT = None
 
         if cfg_parser.has_option('TRAIN', 'DATASET_PATH_EVAL'):
             SETTING_DATASET_PATH_EVAL = Path(cfg_parser['TRAIN']['DATASET_PATH'])
