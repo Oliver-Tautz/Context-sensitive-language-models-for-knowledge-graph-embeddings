@@ -35,7 +35,7 @@ def get_embeddings_from_kg_fast(kgpath,modelpath):
     print('parsing graph')
     #entities, predicates, edges, predicate_ix = parse_kg_fast(kgpath)
 
-    f = open("/data_ssd/relevant_entities_clean.txt",'r')
+    f = open(kgpath,'r')
     entities = f.readlines()
     entities = [x.strip() for x in entities]
 
