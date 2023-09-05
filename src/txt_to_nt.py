@@ -18,5 +18,5 @@ if Path(sys.argv[1]).is_file():
 
     parser = lightrdf.Parser()
 
-    for triple in parser.parse("/home/olli/gits/Better_Knowledge_Graph_Embeddings/codex/data/triples/codex-s/train.nt", base_iri=None):
+    for triple in parser.parse("converted.nt", base_iri=None):
         print(triple)

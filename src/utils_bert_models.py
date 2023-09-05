@@ -99,7 +99,7 @@ class BertKGEmb():
         if self.mode:
             mode = self.mode
 
-        def bert_process(input, column=1):
+        def bert_process(inp, column=1):
 
             # transformers padding works now :)
             # pad manually on string level... this is pretty bad practice.
@@ -111,10 +111,10 @@ class BertKGEmb():
             #    if lens[i] < maxlen:
             #        input[i] = input[i]+' '.join([self.pad_token]*(maxlen-lens[i]).item())
             with torch.no_grad():
-                input = self.tz(list(input), padding='longest', return_tensors='pt')
-
-                ids = input['input_ids']
-                masks = input['attention_mask']
+                print(inp)
+                inp = self.tz(list(inp), padding='longest', return_tensors='pt')
+                ids = inp['input_ids']
+                masks = inp['attention_mask']
 
                 ids = batch(ids.to(self.device), batchsize)
                 masks = batch(masks.to(self.device), batchsize)
