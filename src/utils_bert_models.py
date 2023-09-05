@@ -92,9 +92,9 @@ class BertKGEmb():
 
 
             # save base url
-            parsing_result = urlparse(list(self.tz.vocab.keys())[1])
+        parsing_result = urlparse(list(self.tz.vocab.keys())[1])
 
-            self.entity_base_url =f'{parsing_result.scheme}://{parsing_result.netloc}'
+        self.entity_base_url =f'{parsing_result.scheme}://{parsing_result.netloc}'
 
 
     def get_embeddings(self, entities_or_relations, mode='single', batchsize=100, relations=False):
