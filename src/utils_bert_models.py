@@ -40,6 +40,12 @@ class BertKGEmb():
         self.model = model
         self.tz = tz
 
+        # save base url
+        parsing_result = urlparse(list(self.tz.vocab.keys())[1])
+        self.entity_base_url =f'{parsing_result.scheme}://{parsing_result.netloc}'
+
+
+
         self.pad_token = self.special_tokens_map['pad_token']
         self.pad_token_id = self.tz.convert_tokens_to_ids(self.special_tokens_map['pad_token'])
 
@@ -91,10 +97,6 @@ class BertKGEmb():
             self.relation_walks = dict(zip(predicates, walks))
 
 
-            # save base url
-        parsing_result = urlparse(list(self.tz.vocab.keys())[1])
-
-        self.entity_base_url =f'{parsing_result.scheme}://{parsing_result.netloc}'
 
 
     def get_embeddings(self, entities_or_relations, mode='single', batchsize=100, relations=False):
