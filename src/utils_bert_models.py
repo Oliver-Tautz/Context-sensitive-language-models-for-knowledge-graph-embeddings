@@ -11,7 +11,7 @@ from collections import defaultdict
 import urllib.request
 import gdown
 import zipfile
-
+from urllib.parse import urlparse
 
 
 class BertKGEmb():
@@ -89,6 +89,13 @@ class BertKGEmb():
             walks = self.__merge_walks(walks_entities, walks_rels)
 
             self.relation_walks = dict(zip(predicates, walks))
+
+
+            # save base url
+            parsing_result = urlparse(list(self.tz.vocab.keys())[1])
+
+            self.entity_base_url =f'{parsing_result.scheme}://{parsing_result.netloc}'
+
 
     def get_embeddings(self, entities_or_relations, mode='single', batchsize=100, relations=False):
         """
