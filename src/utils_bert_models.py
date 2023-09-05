@@ -11,7 +11,7 @@ from collections import defaultdict
 import urllib.request
 import gdown
 import zipfile
-
+from urllib.parse import urlparse
 
 
 class BertKGEmb():
@@ -90,6 +90,13 @@ class BertKGEmb():
 
             self.relation_walks = dict(zip(predicates, walks))
 
+
+            # save base url
+            parsing_result = urlparse(list(self.tz.vocab.keys())[1])
+
+            self.entity_base_url =f'{parsing_result.scheme}://{parsing_result.netloc}'
+
+
     def get_embeddings(self, entities_or_relations, mode='single', batchsize=100, relations=False):
         """
         modes:
@@ -111,9 +118,11 @@ class BertKGEmb():
             #    if lens[i] < maxlen:
             #        input[i] = input[i]+' '.join([self.pad_token]*(maxlen-lens[i]).item())
             with torch.no_grad():
+                print(input)
                 input = self.tz(list(input), padding='longest', return_tensors='pt')
 
                 ids = input['input_ids']
+
                 masks = input['attention_mask']
 
                 ids = batch(ids.to(self.device), batchsize)
