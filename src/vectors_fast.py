@@ -83,7 +83,7 @@ if __name__ == "__main__":
                         )
     parser.add_argument("--add-base-url", help="Filepath of the config file. See example config.", type=str, default=None
                         )
-    parser.add_argument(--)
+
 
     args = parser.parse_args()
 
