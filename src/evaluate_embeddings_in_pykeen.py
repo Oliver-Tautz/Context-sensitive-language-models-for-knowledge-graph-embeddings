@@ -10,7 +10,8 @@ def main(args):
     train_file = args.train_triples#'/home/olli/gits/Better_Knowledge_Graph_Embeddings/codex/data/triples/codex-l/train.txt'
     test_file = args.test_triples#'/home/olli/gits/Better_Knowledge_Graph_Embeddings/codex/data/triples/codex-l/test.txt'
     vector_file = args.vector_file#f'/home/olli//gits/Better_Knowledge_Graph_Embeddings/test.txt'
-
+    pykeen_model_name = args.model_name_pykeen
+    epochs = args.epochs
 
     training = TriplesFactory.from_path(
         train_file,
@@ -53,8 +54,8 @@ def main(args):
     result = pipeline(
         training=train_file,
         testing=test_file,
-        model="transE",
-        epochs=10,
+        model=pykeen_model_name,
+        epochs=epochs,
         device='gpu',
         model_kwargs=dict(
             embedding_dim=pretrained_embedding_tensor.shape[-1],
@@ -78,8 +79,9 @@ if __name__ == '__main__':
                         )
     parser.add_argument("--vector-file", help="Filepath of the config file. See example config.", type=str,
                         )
-    parser.add_argument("--add-base-url", help="Filepath of the config file. See example config.", type=str,
-                        default=None
+    parser.add_argument("--model-name-pykeen", help="Filepath of the config file. See example config.", type=str,default = 'transE'
+                        )
+    parser.add_argument("--epochs", help="Filepath of the config file. See example config.", type=int,default=50
                         )
 
     args = parser.parse_args()
