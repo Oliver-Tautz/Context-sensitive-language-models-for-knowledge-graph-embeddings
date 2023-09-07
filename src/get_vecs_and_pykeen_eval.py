@@ -14,7 +14,11 @@ def main(args):
     vector_filepath = f'{Path(modelpath).name}_{Path(entity_filepath).name}_vectors.txt'
 
     if not Path(vector_filepath).is_file():
-        if args.add_base_url != None:
+        if args.add_base_url != None
+            print(['python', 'vectors_fast.py', '--bert-path', modelpath, '--kg-path', entity_filepath, '--out-path',
+                 vector_filepath, '--add-base-url', args.add_base_url,
+                 '--bert-walks', str(args.bert_walks), '--bert-best-eval', str(args.bert_best_eval), '--bert-mode-depth',
+                 str(args.bert_mode_depth)])
             subprocess.run(
                 ['python', 'vectors_fast.py', '--bert-path', modelpath, '--kg-path', entity_filepath, '--out-path',
                  vector_filepath, '--add-base-url', args.add_base_url,
