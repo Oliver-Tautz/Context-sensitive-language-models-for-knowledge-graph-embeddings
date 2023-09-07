@@ -90,7 +90,7 @@ if __name__ == '__main__':
 
 
 
-    print(f'Vector_file={Path(args.vector_file).name},dataset={Path(arg.train_triples).name}')
+    print(f'Vector_file={Path(args.vector_file).name},dataset={Path(args.train_triples).name}')
     print('MRR', result.get_metric('mrr'))
     print('MR', result.get_metric('mr'))
     print('Hits@10', result.get_metric('hits@10'))
