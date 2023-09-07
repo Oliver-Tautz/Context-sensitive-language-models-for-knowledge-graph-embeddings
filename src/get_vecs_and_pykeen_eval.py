@@ -19,13 +19,13 @@ def main(args):
                 ['python', 'vectors_fast.py', '--bert-path', modelpath, '--kg-path', entity_filepath, '--out-path',
                  vector_filepath, '--add-base-url', args.add_base_url,
                  '--bert-walks', str(args.bert_walks), '--bert-best-eval', str(args.bert_best_eval), '--bert-mode-depth',
-                 args.bert_mode_depth])
+                 str(args.bert_mode_depth)])
         else:
             subprocess.run(
                 ['python', 'vectors_fast.py', '--bert-path', modelpath, '--kg-path', entity_filepath, '--out-path',
                  vector_filepath, '--bert-walks', str(args.bert_walks), '--bert-best-eval', str(args.bert_best_eval),
                  '--bert-mode-depth',
-                 args.bert_mode_depth])
+                 str(args.bert_mode_depth)])
 
     subprocess.run(
         ['python', 'evaluate_embeddings_in_pykeen.py', '--train-triples', pykeen_train_triples, '--test-triples',
