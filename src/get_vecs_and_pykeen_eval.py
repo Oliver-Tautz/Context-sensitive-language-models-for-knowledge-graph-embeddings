@@ -58,7 +58,7 @@ if __name__ == '__main__':
                         )
 
     parser.add_argument('--bert-walks', type=str, default=False)
-    parser.add_argument('--bert-best-eval', action='store_true', default=True,
+    parser.add_argument('--bert-best-eval', action='store_true',
                         help='use checkpoint with best eval loss using early stopping.')
     parser.add_argument('--bert-mode-depth', type=int, default=3,
                         help="sdepth of walks for embedding.")
