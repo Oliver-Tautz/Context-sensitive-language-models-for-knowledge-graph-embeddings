@@ -4,7 +4,7 @@ import torch
 from tqdm import tqdm
 import argparse
 import textwrap
-
+from pathlib import Path
 
 def main(args):
     train_file = args.train_triples#'/home/olli/gits/Better_Knowledge_Graph_Embeddings/codex/data/triples/codex-l/train.txt'
@@ -85,11 +85,11 @@ if __name__ == '__main__':
                         )
 
     args = parser.parse_args()
-
-
-
-
     result = main(args)
+
+
+
+    print(f'Vector_file={Path(args.vector_file).name},dataset={Path(arg.train_triples).name}')
     print('MRR', result.get_metric('mrr'))
     print('MR', result.get_metric('mr'))
     print('Hits@10', result.get_metric('hits@10'))
