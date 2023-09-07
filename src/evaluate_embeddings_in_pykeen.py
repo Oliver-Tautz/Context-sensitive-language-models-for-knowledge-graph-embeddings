@@ -84,6 +84,7 @@ if __name__ == '__main__':
     parser.add_argument("--epochs", help="Filepath of the config file. See example config.", type=int,default=50
                         )
 
+
     args = parser.parse_args()
     result = main(args)
 

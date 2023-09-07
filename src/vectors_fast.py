@@ -31,7 +31,7 @@ def get_embeddings_from_kg(kgpath,modelpath):
     entity_embs.update(predicate_embs)
     return entity_embs
 
-def get_embeddings_from_kg_fast(kgpath,modelpath,base_url=None):
+def get_embeddings_from_kg_fast(kgpath,modelpath,base_url=None,datapath=None,depth=3):
     print('parsing graph')
     #entities, predicates, edges, predicate_ix = parse_kg_fast(kgpath)
 
@@ -43,7 +43,10 @@ def get_embeddings_from_kg_fast(kgpath,modelpath,base_url=None):
     #    en
     #print(entities)
     print('loading model')
-    bert = BertKGEmb(modelpath)
+    if datapath != None:
+        bert = BertKGEmb(modelpath,datapath=datapath,depth=depth,mode='walks')
+    else:
+        bert = BertKGEmb(modelpath)
     print('predict embeddings')
     if base_url!= None:
         entity_embs = bert.get_embeddings([urljoin(base_url,e) for e in entities])
@@ -83,6 +86,12 @@ if __name__ == "__main__":
                         )
     parser.add_argument("--add-base-url", help="Filepath of the config file. See example config.", type=str, default=None
                         )
+
+    parser.add_argument('--bert-walks', type=str, default=False)
+    parser.add_argument('--bert-best-eval', action='store_true',default=False,
+                        help='use checkpoint with best eval loss using early stopping.')
+    parser.add_argument('--bert-mode-depth', type=int, default=3,
+                        help="sdepth of walks for embedding.")
 
 
     args = parser.parse_args()
