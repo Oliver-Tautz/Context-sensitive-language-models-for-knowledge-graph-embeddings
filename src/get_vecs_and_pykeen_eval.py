@@ -15,19 +15,16 @@ def main(args):
 
     if not Path(vector_filepath).is_file():
         if args.add_base_url != None:
-            print(['python', 'vectors_fast.py', '--bert-path', modelpath, '--kg-path', entity_filepath, '--out-path',
-                 vector_filepath, '--add-base-url', args.add_base_url,
-                 '--bert-walks', str(args.bert_walks), '--bert-best-eval', str(args.bert_best_eval), '--bert-mode-depth',
-                 str(args.bert_mode_depth)])
+
             subprocess.run(
                 ['python', 'vectors_fast.py', '--bert-path', modelpath, '--kg-path', entity_filepath, '--out-path',
                  vector_filepath, '--add-base-url', args.add_base_url,
-                 '--bert-walks', str(args.bert_walks), '--bert-best-eval', str(args.bert_best_eval), '--bert-mode-depth',
+                 '--bert-walks', str(args.bert_walks), '--bert-mode-depth',
                  str(args.bert_mode_depth)])
         else:
             subprocess.run(
                 ['python', 'vectors_fast.py', '--bert-path', modelpath, '--kg-path', entity_filepath, '--out-path',
-                 vector_filepath, '--bert-walks', str(args.bert_walks), '--bert-best-eval', str(args.bert_best_eval),
+                 vector_filepath, '--bert-walks', str(args.bert_walks),
                  '--bert-mode-depth',
                  str(args.bert_mode_depth)])
 
