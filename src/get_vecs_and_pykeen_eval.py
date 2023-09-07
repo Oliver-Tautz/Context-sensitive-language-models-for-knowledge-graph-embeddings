@@ -35,8 +35,7 @@ def main(args):
                         )
     parser.add_argument("--pykeen_train_triples", help="Filepath of the config file. See example config.", type=str,
                         )
-    parser.add_argument("pykeen_test_triples n", help="Filepath of the config file. See example config.", type=str,
-                        default='transE'
+
 
     args = parser.parse_args()
 
