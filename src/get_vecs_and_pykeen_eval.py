@@ -21,7 +21,7 @@ def main(args):
         ['python', 'evaluate_embeddings_in_pykeen.py', '--train-triples', pykeen_train_triples, '--test-triples',
          pykeen_test_triples,
          '--vector-file', vector_filepath, '--model-name-pykeen', 'ERMLP', '--epochs', '25'])
-
+if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description="Script to train bert model on a Knowledge graph.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
