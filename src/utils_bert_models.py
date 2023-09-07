@@ -12,7 +12,7 @@ import urllib.request
 import gdown
 import zipfile
 from urllib.parse import urlparse
-
+import math
 
 class BertKGEmb():
     def __init__(self, path, datapath=None, depth=3, use_best_eval=False, device=torch.device('cpu'), mode=None):
@@ -120,17 +120,18 @@ class BertKGEmb():
             #    if lens[i] < maxlen:
             #        input[i] = input[i]+' '.join([self.pad_token]*(maxlen-lens[i]).item())
             with torch.no_grad():
-                print(inp)
+                #print(inp)
                 inp = self.tz(list(inp), padding='longest', return_tensors='pt')
                 ids = inp['input_ids']
                 masks = inp['attention_mask']
 
+                l = math.floor(len(ids)/batchsize)
                 ids = batch(ids.to(self.device), batchsize)
                 masks = batch(masks.to(self.device), batchsize)
 
                 batches = []
-                for i, m in zip(ids, masks):
-                    print(i.shape,m.shape)
+                for i, m in tqdm(zip(ids, masks),total=l):
+                    #print(i.shape,m.shape)
                     batches.append(self.model(input_ids=i, attention_mask=m)['last_hidden_state'][:, column])
                 embeddings = torch.cat(batches)
 
