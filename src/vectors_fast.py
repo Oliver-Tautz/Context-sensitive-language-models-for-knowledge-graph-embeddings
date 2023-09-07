@@ -7,7 +7,7 @@ import torch
 from tqdm import tqdm
 
 global DEVICE
-DEVICE= torch.device('cuda' if torch.cuda.is_available() )
+DEVICE= torch.device('cuda' if torch.cuda.is_available() else 'cpu' )
 
 def write_vectors_to_file(dic, vec_filepath):
 
