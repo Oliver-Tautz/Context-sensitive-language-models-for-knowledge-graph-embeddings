@@ -3,7 +3,12 @@ from utils_graph import parse_kg_fast
 import argparse
 import textwrap
 from urllib.parse import urljoin
+import torch
 from tqdm import tqdm
+
+global DEVICE
+DEVICE= torch.device('cuda' if torch.cuda.is_available() )
+
 def write_vectors_to_file(dic, vec_filepath):
 
     f = open(vec_filepath, 'w')
@@ -44,9 +49,9 @@ def get_embeddings_from_kg_fast(kgpath,modelpath,base_url=None,datapath=None,dep
     #print(entities)
     print('loading model')
     if datapath != None:
-        bert = BertKGEmb(modelpath,datapath=datapath,depth=depth,mode='walks')
+        bert = BertKGEmb(modelpath,datapath=datapath,depth=depth,mode='walks',device= DEVICE)
     else:
-        bert = BertKGEmb(modelpath)
+        bert = BertKGEmb(modelpath,device = DEVICE)
     print('predict embeddings')
     if base_url!= None:
         entity_embs = bert.get_embeddings([urljoin(base_url,e) for e in entities])
