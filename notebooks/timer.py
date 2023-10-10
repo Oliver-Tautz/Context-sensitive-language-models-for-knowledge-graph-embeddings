@@ -13,19 +13,19 @@
 #     name: python3
 # ---
 
+import pickle
+from collections import defaultdict
 # %%
 from time import perf_counter, sleep
-from collections import defaultdict
+
 import numpy as np
-import pickle
 
 
 # %%
-def pickle_save(obj,filename):
-    file = open(filename,'wb') 
-    pickle.dump(obj,file)
+def pickle_save(obj, filename):
+    file = open(filename, 'wb')
+    pickle.dump(obj, file)
     file.close()
-  
 
 
 # %%
@@ -36,21 +36,24 @@ class PerfTimer():
     def start(self):
         self.start_time = perf_counter()
         self.current_time = self.start_time
-    def track(self,stat):
 
-            new_time = perf_counter()
-            self.stats_to_track[stat].append(new_time-self.current_time)
-            self.current_time = new_time
+    def track(self, stat):
+        new_time = perf_counter()
+        self.stats_to_track[stat].append(new_time - self.current_time)
+        self.current_time = new_time
+
     def stats(self):
         return self.stats_to_track
+
     def stats_sum(self):
-        return {key: sum(value) for key,value in  self.stats().items()}
+        return {key: sum(value) for key, value in self.stats().items()}
+
     def stats_mean(self):
-        return {key: np.mean(value) for key,value in  self.stats().items()}
-    def stats_f(self,f):
-        return {key: f(value) for key,value in  self.stats().items()}
-        
-    
+        return {key: np.mean(value) for key, value in self.stats().items()}
+
+    def stats_f(self, f):
+        return {key: f(value) for key, value in self.stats().items()}
+
 
 # %%
 if __name__ == "__main__":
@@ -65,5 +68,3 @@ if __name__ == "__main__":
     print(pt.stats_sum())
     print(pt.stats_mean())
     print(pt.stats_f(max))
-
-

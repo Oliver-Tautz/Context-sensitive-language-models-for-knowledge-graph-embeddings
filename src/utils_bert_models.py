@@ -1,11 +1,11 @@
 import json
+import math
 import zipfile
 from pathlib import Path
 from random import randint
 from urllib.parse import urlparse
 
 import gdown
-import math
 import numpy as np
 import torch
 from tqdm import tqdm, trange
@@ -16,7 +16,8 @@ from utils_graph import parse_kg, parse_kg_fast
 
 
 class BertKGEmb():
-    def __init__(self, path, datapath=None, depth=3, use_best_eval=False, device=torch.device('cpu'), mode=None):
+    def __init__(self, path, datapath=None, depth=3, use_best_eval=False,
+                 device=torch.device('cpu'), mode=None):
         self.depth = depth
         path = Path(path)
         self.mode = mode
@@ -25,7 +26,8 @@ class BertKGEmb():
 
         try:
             tz = PreTrainedTokenizerFast(tokenizer_file=str(path / "tokenizer.json"),
-                                         pad_token=self.special_tokens_map['pad_token'])
+                                         pad_token=self.special_tokens_map[
+                                             'pad_token'])
             if not use_best_eval:
                 model = AutoModel.from_pretrained(path / "model")
             else:
@@ -46,7 +48,8 @@ class BertKGEmb():
         self.entity_base_url = f'{parsing_result.scheme}://{parsing_result.netloc}'
 
         self.pad_token = self.special_tokens_map['pad_token']
-        self.pad_token_id = self.tz.convert_tokens_to_ids(self.special_tokens_map['pad_token'])
+        self.pad_token_id = self.tz.convert_tokens_to_ids(
+            self.special_tokens_map['pad_token'])
 
         if datapath:
             if not Path(datapath).is_file():
@@ -95,7 +98,8 @@ class BertKGEmb():
 
             self.relation_walks = dict(zip(predicates, walks))
 
-    def get_embeddings(self, entities_or_relations, mode='single', batchsize=100, relations=False):
+    def get_embeddings(self, entities_or_relations, mode='single',
+                       batchsize=100, relations=False):
         """
         modes:
         single :: use [CLS],ent,[SEP] as input for each path/relation.
@@ -128,7 +132,8 @@ class BertKGEmb():
                 batches = []
                 for i, m in tqdm(zip(ids, masks), total=l):
                     # print(i.shape,m.shape)
-                    batches.append(self.model(input_ids=i, attention_mask=m)['last_hidden_state'][:, column])
+                    batches.append(self.model(input_ids=i, attention_mask=m)[
+                                       'last_hidden_state'][:, column])
                 embeddings = torch.cat(batches)
 
                 return embeddings
@@ -140,20 +145,25 @@ class BertKGEmb():
 
         if mode == 'walks':
             if not relations:
-                entities_or_relations = [self.entity_walks[e] if e in self.entity_walks else e for e in
-                                         entities_or_relations]
+                entities_or_relations = [
+                    self.entity_walks[e] if e in self.entity_walks else e for e
+                    in
+                    entities_or_relations]
                 # use column 1, because first path after CLS is used
                 embeddings = bert_process(entities_or_relations, 1)
                 return embeddings
 
             else:
-                entities_or_relations = [self.relation_walks[r] if r in self.relation_walks else r for r in
-                                         entities_or_relations]
+                entities_or_relations = [
+                    self.relation_walks[r] if r in self.relation_walks else r
+                    for r in
+                    entities_or_relations]
                 # use columne 2, because first relation is used
                 embeddings = bert_process(entities_or_relations, 2)
                 return embeddings
 
-    def __gen_random_walk_relation(self, relation_id, edges, edge_type, depth, max_retries=5, stepback=5):
+    def __gen_random_walk_relation(self, relation_id, edges, edge_type, depth,
+                                   max_retries=5, stepback=5):
 
         walk_entities = []
         walk_relations = [relation_id]
@@ -173,14 +183,15 @@ class BertKGEmb():
 
         while depth > 0:
             # consider ix of edges starting in path
-            print(entity_id)
+            #print(entity_id)
             possible_edges = (edges[:, 0] == entity_id).nonzero()[0]
 
             # choose one randomly
 
             # if not empty
             if len(possible_edges) > 0:
-                chosen_edge = possible_edges[randint(0, len(possible_edges) - 1)]
+                chosen_edge = possible_edges[
+                    randint(0, len(possible_edges) - 1)]
             else:
                 # dead end ... so take a step back.
                 if stepback > 0 and len(walk_entities) > 1:
@@ -204,7 +215,8 @@ class BertKGEmb():
 
         return np.array(walk_entities), np.array(walk_relations)
 
-    def __gen_random_walk_entity(self, entity_id, edges, edge_type, depth, max_retries=5, stepback=5):
+    def __gen_random_walk_entity(self, entity_id, edges, edge_type, depth,
+                                 max_retries=5, stepback=5):
         walk_entities = [entity_id]
         walk_relations = []
         retries = 0
@@ -217,7 +229,8 @@ class BertKGEmb():
 
             # if not empty
             if len(possible_edges) > 0:
-                chosen_edge = possible_edges[randint(0, len(possible_edges) - 1)]
+                chosen_edge = possible_edges[
+                    randint(0, len(possible_edges) - 1)]
             else:
                 # dead end ... so take a step back.
                 if stepback > 0 and len(walk_entities) > 1:

@@ -17,21 +17,25 @@ def main(args):
         if args.add_base_url != None:
 
             subprocess.run(
-                ['python', 'vectors_fast.py', '--bert-path', modelpath, '--kg-path', entity_filepath, '--out-path',
+                ['python', 'vectors_fast.py', '--bert-path', modelpath,
+                 '--kg-path', entity_filepath, '--out-path',
                  vector_filepath, '--add-base-url', args.add_base_url,
                  '--bert-walks', str(args.bert_walks), '--bert-mode-depth',
                  str(args.bert_mode_depth)])
         else:
             subprocess.run(
-                ['python', 'vectors_fast.py', '--bert-path', modelpath, '--kg-path', entity_filepath, '--out-path',
+                ['python', 'vectors_fast.py', '--bert-path', modelpath,
+                 '--kg-path', entity_filepath, '--out-path',
                  vector_filepath, '--bert-walks', str(args.bert_walks),
                  '--bert-mode-depth',
                  str(args.bert_mode_depth)])
 
     subprocess.run(
-        ['python', 'evaluate_embeddings_in_pykeen.py', '--train-triples', pykeen_train_triples, '--test-triples',
+        ['python', 'evaluate_embeddings_in_pykeen.py', '--train-triples',
+         pykeen_train_triples, '--test-triples',
          pykeen_test_triples,
-         '--vector-file', vector_filepath, '--model-name-pykeen', 'ERMLP', '--epochs', '25'])
+         '--vector-file', vector_filepath, '--model-name-pykeen', 'ERMLP',
+         '--epochs', '25'])
 
 
 if __name__ == '__main__':

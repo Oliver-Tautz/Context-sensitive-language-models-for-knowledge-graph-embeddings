@@ -28,8 +28,10 @@ def get_all_corrupted_triples_fast(triple, entities, position='object'):
 
     s, p, o = triple
 
-    object_augmented = [(x, y, z) for (x, y), z in itertools.product([triple[0:2]], entities)]
-    subject_augmented = [(x, y, z) for x, (y, z) in itertools.product(entities, [triple[1:3]])]
+    object_augmented = [(x, y, z) for (x, y), z in
+                        itertools.product([triple[0:2]], entities)]
+    subject_augmented = [(x, y, z) for x, (y, z) in
+                         itertools.product(entities, [triple[1:3]])]
 
     return itertools.chain(object_augmented, subject_augmented)
 
@@ -84,7 +86,7 @@ def get_random_corrupted_triple(triple, entities, corrupt='random'):
             s_corr = choose(entities)
             o_corr = choose(entities)
 
-    return torch.tensor((cls,s_corr, p, o_corr,sep))
+    return torch.tensor((cls, s_corr, p, o_corr, sep))
 
 
 def clean_graph(graph, wv):
@@ -102,9 +104,7 @@ def clean_graph(graph, wv):
     return no_removed
 
 
-
 def parse_kg(path):
-
     graph = Graph()
     graph.parse(path)
     entities = get_entities([graph])
@@ -129,7 +129,7 @@ def parse_kg(path):
     return np.array(list(entities.keys())), np.array(list(predicates.keys())), np.array(edges), np.array(predicate_ix)
 
 
-def parse_kg_to_torch(graph,word_vec_mapping):
+def parse_kg_to_torch(graph, word_vec_mapping):
     entities = get_entities([graph])
 
     entities = np.array(entities)
@@ -175,9 +175,8 @@ def parse_kg_fast(path, filterpath=None):
         e2 = e2[1:-1]
         r = r[1:-1]
 
-
         if filterpath:
-            if not (e1 in filterset or e2 in  filterset):
+            if not (e1 in filterset or e2 in filterset):
                 continue
 
         if e1 in entities:
@@ -208,14 +207,17 @@ def parse_kg_fast(path, filterpath=None):
 
     return entities, predicates, edges, predicate_ix
 
+
 def get_entity(url):
     return urllib.parse.urlparse(url.strip()[1:-1]).path
 
+
 def get_base_url(url):
-    parsed =urllib.parse.urlparse(url.strip()[1:-1])
+    parsed = urllib.parse.urlparse(url.strip()[1:-1])
     url = f"{parsed.scheme}//{parsed.netloc}"
 
     return url
+
 
 def get_base_urls(kgpath):
     f = open(kgpath, 'rb')
@@ -230,7 +232,6 @@ def get_base_urls(kgpath):
         return get_base_url(e1), get_base_url(r)
 
 
-
 def get_filterset(path):
     entity_file = open(path, 'r')
     entities = entity_file.readlines()
@@ -242,8 +243,8 @@ def get_filterset(path):
         entities[i] = parse_result.geturl()
     return set(entities)
 
-def graph_to_string(path,filterfilepath = None):
 
+def graph_to_string(path, filterfilepath=None):
     entities_base_urls = []
     predicate_base_urls = []
 
@@ -265,19 +266,12 @@ def graph_to_string(path,filterfilepath = None):
 
         if filterfilepath:
             if not (e1 in filterset or e2 in filterset):
-                skipped+=1
+                skipped += 1
                 continue
 
-        t = [x for x in [e1,r,e2]]
+        t = [x for x in [e1, r, e2]]
         tp.append(' '.join(t))
-        taken +=1
+        taken += 1
 
-    print(f"filtered {skipped / (skipped+taken)} of the dataset.")
+    print(f"filtered {skipped / (skipped + taken)} of the dataset.")
     return tp
-
-
-
-
-
-
-

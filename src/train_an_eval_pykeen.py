@@ -1,6 +1,7 @@
-from pykeen.pipeline import pipeline
 import argparse
 import textwrap
+
+from pykeen.pipeline import pipeline
 
 
 def main(args):
@@ -10,7 +11,8 @@ def main(args):
     # dataset_test = 'relevant_dbpedia_2016-04.tsv'
 
     dataset = args.dataset
-    result = pipeline(dataset=dataset, model=modelname, epochs=epochs,model_kwargs = {'embedding_dim':200})
+    result = pipeline(dataset=dataset, model=modelname, epochs=epochs, model_kwargs={
+        'embedding_dim': 200})
 
     print(f'Results {modelname} on {dataset}:')
     print('MRR: ', result.get_metric('mrr'))

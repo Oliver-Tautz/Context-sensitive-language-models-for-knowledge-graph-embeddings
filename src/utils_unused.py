@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def merge_historires(history_list):
     h = {}
     for key in history_list[0].history.keys():
@@ -9,7 +10,8 @@ def merge_historires(history_list):
 
 def get_vectors(triples, entity_vec_mapping, vector_size=200):
     X = np.array(triples)
-    X = [(entity_vec_mapping(x[0]), entity_vec_mapping(x[1]), entity_vec_mapping(x[2])) for x in X]
+    X = [(entity_vec_mapping(x[0]), entity_vec_mapping(x[1]),
+          entity_vec_mapping(x[2])) for x in X]
     X = [np.concatenate(x) for x in X]
     X = np.vstack(X).astype(np.float64)
 

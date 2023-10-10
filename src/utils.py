@@ -5,19 +5,21 @@ from time import perf_counter
 
 import numpy as np
 
-VERBOSE=1
+VERBOSE = 1
 
-def run_str(string,silent = False):
+
+def run_str(string, silent=False):
     if not silent:
         return subprocess.run(string.split())
     else:
-        return subprocess.run(string.split(),capture_output=True)
+        return subprocess.run(string.split(), capture_output=True)
 
 
 def pickle_save(obj, filename):
     file = open(filename, 'wb')
     pickle.dump(obj, file)
     file.close()
+
 
 def batch(iterable, n=1):
     # great! taken from https://stackoverflow.com/questions/8290397/how-to-split-an-iterable-in-constant-size-chunks
@@ -48,27 +50,33 @@ def choose(a):
 
     return a[i]
 
+
 def map_keyed_vectors(word_vectors, iterable):
     """
     for some reason faster than native call :O
     """
     return np.array(list(word_vectors.get_vector(x) for x in iterable))
 
+
 def verbprint(str):
     if VERBOSE:
         print(str)
-def merge_lists(l0,l1):
+
+
+def merge_lists(l0, l1):
     l_new = []
     while l0 and l1:
         l_new.append(l0.pop(0))
         l_new.append(l1.pop(0))
 
     if l0:
-        l_new = l_new+l0
+        l_new = l_new + l0
     else:
-        l_new = l_new+l1
+        l_new = l_new + l1
 
     return l_new
+
+
 class PerfTimer():
     def __init__(self):
         self.stats_to_track = defaultdict(list)
@@ -94,6 +102,7 @@ class PerfTimer():
     def stats_f(self, f):
         return {key: f(value) for key, value in self.stats().items()}
 
+
 def iter_exception_wrapper(gen):
     """
     wrapper to handle exceptions in continuable iterator
@@ -104,4 +113,4 @@ def iter_exception_wrapper(gen):
         except StopIteration:
             break
         except Exception as e:
-            print(e) # or whatever kind of logging you want
+            print(e)  # or whatever kind of logging you want

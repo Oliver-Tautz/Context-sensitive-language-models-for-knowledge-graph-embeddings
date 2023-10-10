@@ -18,8 +18,10 @@ def compute_rank(scores, ix, mask=None):
 
     else:
 
-        optimistic_rank = ((scores > scores[ix]).index_fill(0, mask, False)).sum() + 1
-        pessimistic_rank = ((scores >= scores[ix]).index_fill(0, mask, False)).sum()
+        optimistic_rank = ((scores > scores[
+            ix]).index_fill(0, mask, False)).sum() + 1
+        pessimistic_rank = (
+            (scores >= scores[ix]).index_fill(0, mask, False)).sum()
 
     rank = (optimistic_rank + pessimistic_rank) * 0.5
 
@@ -34,8 +36,10 @@ def compute_rank(scores, ix, mask=None):
 
     else:
 
-        optimistic_rank = ((scores > scores[ix]).index_fill(0, mask, False)).sum() + 1
-        pessimistic_rank = ((scores >= scores[ix]).index_fill(0, mask, False)).sum()
+        optimistic_rank = ((scores > scores[
+            ix]).index_fill(0, mask, False)).sum() + 1
+        pessimistic_rank = (
+            (scores >= scores[ix]).index_fill(0, mask, False)).sum()
 
     rank = (optimistic_rank + pessimistic_rank) * 0.5
 
@@ -67,7 +71,9 @@ def get_tailmask(x, no_entities):
     return torch.arange(x, no_entities ** 2, no_entities)
 
 
-def eval_ranks(model, graph,word_vec_mapping, filtered=True, batchsize=None, vecsize=VECTOR_SIZE, force_cpu=True, bit16tensors=False,
+def eval_ranks(model, graph, word_vec_mapping, filtered=True, batchsize=None,
+               vecsize=VECTOR_SIZE, force_cpu=True,
+               bit16tensors=False,
                bench=False):
     # get data from graph
 
@@ -87,7 +93,7 @@ def eval_ranks(model, graph,word_vec_mapping, filtered=True, batchsize=None, vec
 
     ### Preprocessing graph into torch arrays and ix
     edges, predicate_ix, entity_ix_mapping, predicate_ix_mapping, entity_vecs, predicate_vecs = parse_rdflib_to_torch(
-        graph,word_vec_mapping=word_vec_mapping)
+        graph, word_vec_mapping=word_vec_mapping)
 
     entity_vecs = entity_vecs.to(device)
     ix_predicate_mapping = {k: v for (v, k) in predicate_ix_mapping.items()}
@@ -97,24 +103,29 @@ def eval_ranks(model, graph,word_vec_mapping, filtered=True, batchsize=None, vec
 
     # could also try torch.cross and torch.combinations if needed
     # all possible s_o_combinations
-    s_o_combs = torch.tensor(cartesian((range(no_entities), range(no_entities))))
+    s_o_combs = torch.tensor(cartesian((range(no_entities),
+                                        range(no_entities))))
     # Allocate array only once
 
     if not batchsize:
         # Full array in RAM
         if bit16tensors:
-            to_score_embeddings = torch.empty((len(s_o_combs), vecsize * 3)).half().to(device)
+            to_score_embeddings = torch.empty((len(s_o_combs),
+                                               vecsize * 3)).half().to(device)
         else:
-            to_score_embeddings = torch.empty((len(s_o_combs), vecsize * 3)).to(device)
+            to_score_embeddings = torch.empty((len(s_o_combs),
+                                               vecsize * 3)).to(device)
 
         to_score_embeddings[:, 0:vecsize] = entity_vecs[s_o_combs[:, 0]]
         to_score_embeddings[:, 2 * vecsize:] = entity_vecs[s_o_combs[:, 1]]
     else:
         # Allocate Array of (Batchsize,dim)
         if bit16tensors:
-            to_score_embeddings = torch.empty((batchsize, vecsize * 3)).half().to(device)
+            to_score_embeddings = torch.empty((batchsize,
+                                               vecsize * 3)).half().to(device)
         else:
-            to_score_embeddings = torch.empty((batchsize, vecsize * 3)).to(device)
+            to_score_embeddings = torch.empty((batchsize,
+                                               vecsize * 3)).to(device)
 
     head_ranks = []
     tail_ranks = []
@@ -145,10 +156,13 @@ def eval_ranks(model, graph,word_vec_mapping, filtered=True, batchsize=None, vec
                 # print(batch[:,0].type())
                 if len(batch) != batchsize:
 
-                    to_score_embeddings[:, 0:vecsize][0:len(batch)] = entity_vecs[batch[:, 0]]
-                    to_score_embeddings[:, 2 * vecsize:][0:len(batch)] = entity_vecs[batch[:, 1]]
+                    to_score_embeddings[:, 0:vecsize][0:len(batch)] = \
+                    entity_vecs[batch[:, 0]]
+                    to_score_embeddings[:, 2 * vecsize:][0:len(batch)] = \
+                    entity_vecs[batch[:, 1]]
 
-                    to_score_embeddings[:, vecsize:2 * vecsize] = predicate_embedding
+                    to_score_embeddings[:,
+                    vecsize:2 * vecsize] = predicate_embedding
 
                     perfTimer.track('copy embeddings into array')
 
@@ -159,9 +173,12 @@ def eval_ranks(model, graph,word_vec_mapping, filtered=True, batchsize=None, vec
 
 
                 else:
-                    to_score_embeddings[:, 0:vecsize] = entity_vecs[batch[:, 0]]
-                    to_score_embeddings[:, 2 * vecsize:] = entity_vecs[batch[:, 1]]
-                    to_score_embeddings[:, vecsize:2 * vecsize] = predicate_embedding
+                    to_score_embeddings[:, 0:vecsize] = entity_vecs[
+                        batch[:, 0]]
+                    to_score_embeddings[:, 2 * vecsize:] = entity_vecs[
+                        batch[:, 1]]
+                    to_score_embeddings[:,
+                    vecsize:2 * vecsize] = predicate_embedding
 
                     perfTimer.track('copy embeddings into array')
 
@@ -185,7 +202,7 @@ def eval_ranks(model, graph,word_vec_mapping, filtered=True, batchsize=None, vec
             scores = model(to_score_embeddings).squeeze()
             perfTimer.track('score_embeddings')
 
-            #return scores, edges, predicate_embedding, pred_ix, entity_vecs, predicate_ix
+            # return scores, edges, predicate_embedding, pred_ix, entity_vecs, predicate_ix
 
         # sorted_ix = scor
 
@@ -228,17 +245,21 @@ def eval_ranks(model, graph,word_vec_mapping, filtered=True, batchsize=None, vec
             break
     return torch.tensor(head_ranks), torch.tensor(tail_ranks), perfTimer
 
-def mean_rank(head_ranks,tail_ranks):
-    return (torch.mean(head_ranks)+torch.mean(tail_ranks))/2
 
-def mean_reciprocal_rank(head_ranks,tail_ranks):
-    return (torch.mean(1/head_ranks)+torch.mean(1/tail_ranks))/2
+def mean_rank(head_ranks, tail_ranks):
+    return (torch.mean(head_ranks) + torch.mean(tail_ranks)) / 2
 
-def hitsAt(head_ranks,tail_ranks,at):
-    return ((head_ranks <=at).sum() + (tail_ranks<=at).sum())/(len(head_ranks)+len(tail_ranks))
 
-def eval_model(model,graph,word_vec_mapping,return_tensors=False):
-    
+def mean_reciprocal_rank(head_ranks, tail_ranks):
+    return (torch.mean(1 / head_ranks) + torch.mean(1 / tail_ranks)) / 2
+
+
+def hitsAt(head_ranks, tail_ranks, at):
+    return ((head_ranks <= at).sum() + (tail_ranks <= at).sum()) / (
+                len(head_ranks) + len(tail_ranks))
+
+
+def eval_model(model, graph, word_vec_mapping, return_tensors=False):
     with torch.no_grad():
         model.eval()
         head_ranks, tail_ranks, pt = eval_ranks(model, graph, word_vec_mapping, force_cpu=True,
@@ -246,30 +267,26 @@ def eval_model(model,graph,word_vec_mapping,return_tensors=False):
         # collect garbage because of large arrays
         gc.collect()
         stats = dict()
-        
+
         stats['MR'] = mean_rank(head_ranks, tail_ranks)
         stats['MRR'] = mean_reciprocal_rank(head_ranks, tail_ranks)
         stats['Hits@1'] = hitsAt(head_ranks, tail_ranks, 1)
         stats['Hits@3'] = hitsAt(head_ranks, tail_ranks, 3)
         stats['Hits@10'] = hitsAt(head_ranks, tail_ranks, 10)
-        
-        
+
         stats['MR_head'] = torch.mean(head_ranks)
         stats['MRR_head'] = torch.mean(1 / head_ranks)
-        stats['Hits@1_head']  = (head_ranks <= 1).sum() / len(tail_ranks)
-        stats['Hits@3_head']  = (head_ranks <= 3).sum() / len(tail_ranks)
-        stats['Hits@10_head'] =( head_ranks <= 10).sum() / len(tail_ranks)
-        
+        stats['Hits@1_head'] = (head_ranks <= 1).sum() / len(tail_ranks)
+        stats['Hits@3_head'] = (head_ranks <= 3).sum() / len(tail_ranks)
+        stats['Hits@10_head'] = (head_ranks <= 10).sum() / len(tail_ranks)
+
         stats['MR_tail'] = torch.mean(tail_ranks)
         stats['MRR_tail'] = torch.mean(1 / tail_ranks)
-        stats['Hits@1_tail']  = (tail_ranks <= 1).sum() / len(tail_ranks)
-        stats['Hits@3_tail']  = (tail_ranks <= 3).sum() / len(tail_ranks)
-        stats['Hits@10_tail'] =( tail_ranks <= 10).sum() / len(tail_ranks)
+        stats['Hits@1_tail'] = (tail_ranks <= 1).sum() / len(tail_ranks)
+        stats['Hits@3_tail'] = (tail_ranks <= 3).sum() / len(tail_ranks)
+        stats['Hits@10_tail'] = (tail_ranks <= 10).sum() / len(tail_ranks)
 
         if not return_tensors:
-            stats = {k:[v.item()] for k,v in stats.items()}
+            stats = {k: [v.item()] for k, v in stats.items()}
 
-        
-
-
-    return stats ,pt
+    return stats, pt
