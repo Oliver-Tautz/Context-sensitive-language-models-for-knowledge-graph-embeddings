@@ -16,6 +16,18 @@ After training the trained model and its training data are contained in a new su
 
 ## Generate Embeddings
 
+To generate embeddings with a trained model, run 
+
+```
+python generate_bert_vectors.py --bert-path tiny_bert_from_scratch_simple_ep100_vec200_dataset\=MLM_mask-chance\=0.33_mask-token-chance\=0.33/ --kg-path FB15k-237/train.nt --out-path 'fb15k-237_vectors.txt'
+
+```
 
 
 ## Evaluate with [pykeen](https://github.com/pykeen/pykeen)
+
+Evaluate the embeddings in pykeen with
+
+```
+python get_vecs_and_pykeen_eval.py --bert-path tiny_bert_from_scratch_simple_ep2_vec200_dataset\=MLM_mask-chance\=0.33_mask-token-chance\=0.33/ --pykeen-train-triples FB15k-237/train.nt --pykeen-test-triples FB15k-237/test.nt
+```
