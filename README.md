@@ -1,3 +1,21 @@
-# Better_Knowledge_Graph_Embeddings
+# Context-Sensitive Language Models For Knowledge Graph Embeddings
 
-Repository used for my master thesis ...
+Train a BERT model to generate Knowledge Graph embeddings. 
+
+## Install
+
+## Train BERT
+
+To train BERT a config file needs to be created. An example config can be found in [example_config.ini](src/conf/example_config.ini) . Adjust the parameters and run 
+
+```
+python src/train_bert_embeddings.py --config $CONFIG_PATH
+```
+
+After training the trained model and its training data are contained in a new subfolder with the name given in the config file.
+
+## Generate Embeddings
+
+
+
+## Evaluate with [pykeen](https://github.com/pykeen/pykeen)
