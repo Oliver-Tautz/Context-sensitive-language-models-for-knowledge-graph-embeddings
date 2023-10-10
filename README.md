@@ -25,9 +25,9 @@ python generate_bert_vectors.py --bert-path tiny_bert_from_scratch_simple_ep100_
 ```
 
 
-### Evaluate with [pykeen](https://github.com/pykeen/pykeen)
+### Evaluate with [PyKEEN](https://github.com/pykeen/pykeen)
 
-Evaluate the embeddings in pykeen with
+Evaluate the embeddings in PyKEEN with
 
 ```
 python get_vecs_and_pykeen_eval.py --bert-path tiny_bert_from_scratch_simple_ep2_vec200_dataset\=MLM_mask-chance\=0.33_mask-token-chance\=0.33/ --pykeen-train-triples FB15k-237/train.nt --pykeen-test-triples FB15k-237/test.nt
