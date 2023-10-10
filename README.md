@@ -3,7 +3,14 @@
 Train a BERT model to generate Knowledge Graph embeddings. The transformer model can learn and create embeddings for any RDF graph in [N-triples](https://www.w3.org/TR/n-triples/) format.
 
 
-## Install
+### Install
+To install all dependencies with pip, run
+
+```
+python -m pip install -r requirements.txt
+```
+
+
 
 ### Train BERT
 
