@@ -28,7 +28,7 @@ import shutil
 from utils import verbprint
 from utils_train import train_bert_embeddings_mlm, score_bert_model_mlm, train_bert_embeddings_lp, score_bert_model_lp, \
     train_bert_embeddings_lm
-from jrdf2vec_walks_for_bert import generate_walks
+from utils_data import generate_walks
 from profiler import Profiler
 from sklearn.model_selection import train_test_split
 from utils_graph import parse_kg_fast, graph_to_string

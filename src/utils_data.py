@@ -1,4 +1,4 @@
-
+from pathlib import Path
 from utils import choose
 from utils_graph import get_random_corrupted_triple
 import torch
@@ -11,7 +11,7 @@ from tokenizers.processors import BertProcessing
 from transformers import BertConfig, BertModel, AutoModel
 from rdflib import Graph
 import numpy as np
-
+import os
 
 
 
@@ -300,16 +300,6 @@ class DatasetBertTraining_LP(torch.utils.data.Dataset):
         return self.special_tokens_map
 
 
-
-
-
-
-
-
-
-
-
-
 def get_bert_simple_dataset(graph):
     # Just 's p o' as sentence.
     dataset_most_simple = [' '.join(x) for x in graph]
@@ -325,3 +315,35 @@ def get_bert_simple_dataset(graph):
     tz = dataset.get_tokenizer()
 
     return dataset, tz
+
+
+def generate_walks(tmpdir, dataset_file, outname, nproc, depth, no_walks_per_entity, generation_mode="RANDOM_WALKS_DUPLICATE_FREE",light=None):
+    # if file does not exist or is empty ...
+    print(
+        f"java -jar jrdf2vec-1.3-SNAPSHOT.jar -walkDirectory {str(Path(tmpdir))} -light {light} -graph {dataset_file} -onlyWalks -threads {nproc} -depth {depth} -numberOfWalks {no_walks_per_entity} -walkGenerationMode {generation_mode}")
+    if not Path(f'{tmpdir}/{outname}_{generation_mode}_d={depth}_w={no_walks_per_entity}.txt').is_file() or os.stat(f'{tmpdir}/{outname}_{generation_mode}_d={depth}_w={no_walks_per_entity}.txt') == 0:
+        print('')
+        if not Path('./jrdf2vec-1.3-SNAPSHOT.jar').is_file():
+            run_str("wget -q -nc https://raw.githubusercontent.com/dwslab/jRDF2Vec/jars/jars/jrdf2vec-1.3-SNAPSHOT.jar")
+        print(tmpdir)
+
+        if light:
+            print(
+                f"java -Xmx100g -jar jrdf2vec-1.3-SNAPSHOT.jar -walkDirectory {str(Path(tmpdir))} -light {light} -graph {dataset_file} -onlyWalks -threads {nproc} -depth {depth} -numberOfWalks {no_walks_per_entity} -walkGenerationMode {generation_mode}")
+            run_str(
+                f"java -Xmx100g -jar jrdf2vec-1.3-SNAPSHOT.jar -walkDirectory {str(Path(tmpdir))} -light {light} -graph {dataset_file} -onlyWalks -threads {nproc} -depth {depth} -numberOfWalks {no_walks_per_entity} -walkGenerationMode {generation_mode}")
+            run_str(
+                f"java -Xmx100g -jar jrdf2vec-1.3-SNAPSHOT.jar -walkDirectory {str(Path(tmpdir))} -mergeWalks -o {tmpdir}/{outname}_{generation_mode}_d={depth}_w={no_walks_per_entity}.txt")
+        else:
+
+            print(f"java -Xmx100g -jar jrdf2vec-1.3-SNAPSHOT.jar -walkDirectory {str(Path(tmpdir))} -graph {dataset_file} -onlyWalks -threads {nproc} -depth {depth} -numberOfWalks {no_walks_per_entity} -walkGenerationMode {generation_mode}")
+            run_str(
+                f"java -Xmx100g -jar jrdf2vec-1.3-SNAPSHOT.jar -walkDirectory {str(Path(tmpdir))} -graph {dataset_file} -onlyWalks -threads {nproc} -depth {depth} -numberOfWalks {no_walks_per_entity} -walkGenerationMode {generation_mode}")
+            run_str(f"java -jar jrdf2vec-1.3-SNAPSHOT.jar -walkDirectory {str(Path(tmpdir))} -mergeWalks -o {tmpdir}/{outname}_{generation_mode}_d={depth}_w={no_walks_per_entity}.txt")
+
+        # remove unused tmpfiles
+        for file in os.listdir(tmpdir):
+            if Path(file).suffix == '.gz':
+                os.remove(f'{tmpdir}/{file}')
+
+    return f"{tmpdir}/{outname}_{generation_mode}_d={depth}_w={no_walks_per_entity}.txt"
