@@ -1,9 +1,12 @@
 import pickle
 import subprocess
 from collections import defaultdict
+from pathlib import Path
 from time import perf_counter
 
 import numpy as np
+from lightrdf import Parser
+from tqdm import tqdm
 
 VERBOSE = 1
 
@@ -101,6 +104,17 @@ class PerfTimer():
 
     def stats_f(self, f):
         return {key: f(value) for key, value in self.stats().items()}
+
+
+def convert_nt_to_txt(inPath, outPath):
+    if Path(inPath).is_file():
+        outfile = open(outPath, 'w')
+        parser = Parser()
+        for e1, r, e2 in tqdm(iter_exception_wrapper(parser.parse(inPath,
+                                                                  format='nt'))):
+            outfile.write(f'{e1.strip()[1:-1]}\t{r.strip()[1:-1]}\t'
+                          f'{e2.strip()[1:-1]}\n')
+        outfile.close()
 
 
 def iter_exception_wrapper(gen):

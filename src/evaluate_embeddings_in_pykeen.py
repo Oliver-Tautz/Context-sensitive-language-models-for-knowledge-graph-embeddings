@@ -1,7 +1,7 @@
 import argparse
 import textwrap
 from pathlib import Path
-
+from utils import convert_nt_to_txt
 import torch
 from pykeen.pipeline import pipeline
 from pykeen.triples import TriplesFactory
@@ -14,6 +14,9 @@ def main(args):
     vector_file = args.vector_file  # f'/home/olli//gits/Better_Knowledge_Graph_Embeddings/test.txt'
     pykeen_model_name = args.model_name_pykeen
     epochs = args.epochs
+
+    convert_nt_to_txt(train_file,'/tmp/train.txt')
+    convert_nt_to_txt(test_file,'/tmp/test.txt')
 
     training = TriplesFactory.from_path(
         train_file,
@@ -53,8 +56,8 @@ def main(args):
 
     print('Start training.')
     result = pipeline(
-        training=train_file,
-        testing=test_file,
+        training='/tmp/train.txt',
+        testing='/tmp/test.txt',
         model=pykeen_model_name,
         epochs=epochs,
         device='gpu',
