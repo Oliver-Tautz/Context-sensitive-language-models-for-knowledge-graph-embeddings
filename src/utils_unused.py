@@ -1,6 +1,5 @@
 import numpy as np
 
-
 def merge_historires(history_list):
     h = {}
     for key in history_list[0].history.keys():

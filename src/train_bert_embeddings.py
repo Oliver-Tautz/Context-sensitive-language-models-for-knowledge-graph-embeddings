@@ -1,12 +1,9 @@
 import transformers
 from tokenizers.models import WordLevel
-from tokenizers import Tokenizer
-from transformers import BertTokenizer, EncoderDecoderModel, BertForTokenClassification, BertForNextSentencePrediction
+from transformers import BertTokenizer, BertForTokenClassification, BertForNextSentencePrediction
 from tokenizers.pre_tokenizers import WhitespaceSplit
-from tokenizers.trainers import WordLevelTrainer
 from tokenizers.processors import BertProcessing
 from transformers import BertConfig, BertModel, AutoModel
-from utils_graph import get_entities
 import textwrap
 import argparse
 import configparser
@@ -15,21 +12,15 @@ import os
 import json
 import copy
 from collections import defaultdict
-import torchmetrics
-import math
-from tqdm import tqdm, trange
-from rdflib import Graph
 import numpy as np
 import torch
-from torch.utils.data import DataLoader
 from utils_data import DatasetBertTraining, DatasetBertTraining_LP, DatasetBertTraining_LM
 import pandas as pd
 import shutil
 from utils import verbprint
-from utils_train import train_bert_embeddings_mlm, score_bert_model_mlm, train_bert_embeddings_lp, score_bert_model_lp, \
+from utils_train import train_bert_embeddings_mlm, train_bert_embeddings_lp, score_bert_model_lp, \
     train_bert_embeddings_lm
 from utils_data import generate_walks
-from profiler import Profiler
 from sklearn.model_selection import train_test_split
 from utils_graph import parse_kg_fast, graph_to_string
 
