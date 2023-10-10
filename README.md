@@ -9,9 +9,13 @@ Train a BERT model to generate Knowledge Graph embeddings.
 To train BERT a config file needs to be created. An example config can be found in [example_config.ini](src/conf/example_config.ini) . Adjust the parameters and run 
 
 ```
-python /home/olli/gits/Better_Knowledge_Graph_Embeddings/src/train_bert_embeddings.py --config $CONFIG_PATH
+python src/train_bert_embeddings.py --config $CONFIG_PATH
 ```
 
+After training the trained model and its training data are contained in a new subfolder with the name given in the config file.
+
 ## Generate Embeddings
+
+
 
 ## Evaluate with [pykeen](https://github.com/pykeen/pykeen)
