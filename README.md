@@ -1,22 +1,21 @@
 # Context-Sensitive Language Models For Knowledge Graph Embeddings
 
-##### Train a BERT model to generate Knowledge Graph embeddings. 
-
+Train a BERT model to generate Knowledge Graph embeddings. The transformer model can learn and create embeddings for any RDF graph in [N-triples](https://www.w3.org/TR/n-triples/) format.
 
 
 ## Install
 
-## Train BERT
+### Train BERT
 
-To train BERT a config file needs to be created. An example config can be found in [example_config.ini](src/conf/example_config.ini) . Adjust the parameters and run 
+To train BERT a config file needs to be created. An example config can be found in [example_config.ini](src/conf/example_config.ini) . **Adjust the parameters** and run 
 
 ```
 python src/train_bert_embeddings.py --config $CONFIG_PATH
 ```
 
-After training the trained model and its training data are contained in a new subfolder with the name given in the config file.
+After training, the trained model and its data are contained in a new subfolder with the name given in the config file.
 
-## Generate Embeddings
+### Generate Embeddings
 
 To generate embeddings with a trained model, run 
 
@@ -26,7 +25,7 @@ python generate_bert_vectors.py --bert-path tiny_bert_from_scratch_simple_ep100_
 ```
 
 
-## Evaluate with [pykeen](https://github.com/pykeen/pykeen)
+### Evaluate with [pykeen](https://github.com/pykeen/pykeen)
 
 Evaluate the embeddings in pykeen with
 
