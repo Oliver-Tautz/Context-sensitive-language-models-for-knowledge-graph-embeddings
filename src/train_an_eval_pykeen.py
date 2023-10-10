@@ -10,7 +10,7 @@ def main(args):
     # dataset_test = 'relevant_dbpedia_2016-04.tsv'
 
     dataset = args.dataset
-    result = pipeline(dataset=dataset, model=modelname, epochs=epochs)
+    result = pipeline(dataset=dataset, model=modelname, epochs=epochs,model_kwargs = {'embedding_dim':200})
 
     print(f'Results {modelname} on {dataset}:')
     print('MRR: ', result.get_metric('mrr'))

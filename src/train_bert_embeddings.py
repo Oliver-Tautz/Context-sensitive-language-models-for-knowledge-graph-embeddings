@@ -40,9 +40,8 @@ def main(args):
         cfg_parser = configparser.ConfigParser(allow_no_value=True)
         cfg_parser.read(args.config)
 
-
         if cfg_parser.has_option('TRAIN', 'FULL_BERT'):
-            SETTING_FULL_BERT = cfg_parser.getboolean('TRAIN','FULL_BERT')
+            SETTING_FULL_BERT = cfg_parser.getboolean('TRAIN', 'FULL_BERT')
         else:
             SETTING_FULL_BERT = None
 
@@ -127,10 +126,10 @@ def main(args):
     if SETTING_BERT_DATASET_TYPE == 'MLM' or SETTING_BERT_DATASET_TYPE == 'MASS':
         if not SETTING_BERT_WALK_USE:
 
-            dataset = graph_to_string(SETTING_DATASET_PATH,filterfilepath=SETTING_DATASET_PATH_FILTERFILE)
+            dataset = graph_to_string(SETTING_DATASET_PATH, filterfilepath=SETTING_DATASET_PATH_FILTERFILE)
 
             if SETTING_DATASET_PATH_EVAL:
-                dataset_eval = graph_to_string(SETTING_DATASET_PATH,filterfilepath=SETTING_DATASET_PATH_FILTERFILE)
+                dataset_eval = graph_to_string(SETTING_DATASET_PATH, filterfilepath=SETTING_DATASET_PATH_FILTERFILE)
             else:
                 dataset, dataset_eval = train_test_split(dataset, train_size=0.75, test_size=0.25, random_state=328)
         else:
@@ -153,10 +152,10 @@ def main(args):
             print(len(dataset), len(dataset_eval))
     elif SETTING_BERT_DATASET_TYPE == "LP":
 
-        dataset = graph_to_string(SETTING_DATASET_PATH,filterfilepath=SETTING_DATASET_PATH_FILTERFILE)
+        dataset = graph_to_string(SETTING_DATASET_PATH, filterfilepath=SETTING_DATASET_PATH_FILTERFILE)
 
         if SETTING_DATASET_PATH_EVAL:
-            dataset_eval = graph_to_string(SETTING_DATASET_PATH,filterfilepath=SETTING_DATASET_PATH_FILTERFILE)
+            dataset_eval = graph_to_string(SETTING_DATASET_PATH, filterfilepath=SETTING_DATASET_PATH_FILTERFILE)
         else:
             dataset, dataset_eval = train_test_split(dataset, train_size=0.75, test_size=0.25, random_state=328)
 
@@ -272,7 +271,6 @@ def main(args):
 
     verbprint(f"example data processed: {dataset[0]}")
 
-
     tiny_pretrained = AutoModel.from_pretrained('prajjwal1/bert-tiny')
 
     if SETTING_FULL_BERT:
@@ -281,7 +279,6 @@ def main(args):
     tiny_config = tiny_pretrained.config
 
     # Change parameters
-
 
     tiny_config._name_or_path = "otautz/tiny"
 
@@ -299,9 +296,8 @@ def main(args):
     # fix hidden_size == N*attention_heads
 
     num_attention_heads = encoder_config.num_attention_heads
-    if SETTING_VECTOR_SIZE % num_attention_heads != 0 :
-        SETTING_VECTOR_SIZE =  SETTING_VECTOR_SIZE + (num_attention_heads -  SETTING_VECTOR_SIZE % num_attention_heads)
-
+    if SETTING_VECTOR_SIZE % num_attention_heads != 0:
+        SETTING_VECTOR_SIZE = SETTING_VECTOR_SIZE + (num_attention_heads - SETTING_VECTOR_SIZE % num_attention_heads)
 
     encoder_config.hidden_size = SETTING_VECTOR_SIZE
 
@@ -346,7 +342,8 @@ def main(args):
                                                                                          device,
                                                                                          SETTING_WORK_FOLDER,
                                                                                          stop_early_patience=SETTING_STOP_EARLY,
-                                                                                         stop_early_delta=SETTINGS_STOP_EARLY_DELTA)
+                                                                                         stop_early_delta=SETTINGS_STOP_EARLY_DELTA,
+                                                                                         vector_size=SETTING_VECTOR_SIZE)
 
     elif SETTING_BERT_DATASET_TYPE == 'LM':
         tiny_encoder, optimizer, history, profile = train_bert_embeddings_lm(tiny_encoder,
@@ -390,8 +387,6 @@ def main(args):
 
     with open(SETTING_WORK_FOLDER / 'special_tokens_map.json', 'w', encoding='utf-8') as f:
         json.dump(special_tokens_map, f, ensure_ascii=False, indent=4)
-
-
 
 
 if __name__ == '__main__':

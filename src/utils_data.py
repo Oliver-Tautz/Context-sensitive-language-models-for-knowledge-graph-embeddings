@@ -1,4 +1,4 @@
-from settings import VECTOR_SIZE
+
 from utils import choose
 from utils_graph import get_random_corrupted_triple
 import torch
@@ -13,26 +13,6 @@ from rdflib import Graph
 import numpy as np
 
 
-class Dataset11(torch.utils.data.Dataset):
-    def __init__(self, graph, vec_mapping, entities, corrupt='random', vector_size=VECTOR_SIZE):
-        """
-        graph: graph to train on
-        vec_mapping: function that returns vectos from URIs
-        entities_or_relations: iterable of all entities_or_relations to build fake input
-        """
-
-        self.entities = vec_mapping(np.array(entities))
-        self.graph = get_vectors_fast(graph, vec_mapping)
-        self.len = len(graph)
-        self.vec_mapping = vec_mapping
-        self.corrupt = corrupt
-        self.vector_size = vector_size
-
-    def __len__(self):
-        return self.len
-
-    def __getitem__(self, ix):
-        return get_1_1_dataset_embedded(self.graph[ix], self.entities, self.corrupt, self.vector_size)
 
 
 def random_mask(token, mask_token, vocab_size, mask_chance=0.33, mask_token_chance=0.9):
@@ -320,98 +300,14 @@ class DatasetBertTraining_LP(torch.utils.data.Dataset):
         return self.special_tokens_map
 
 
-def get_1_1_dataset(graph, entities, entity_vec_mapping, corrupt='random'):
-    original_triple_len = len(graph)
-    # get input
-    X = list(graph)
-    no_t = len(X)
-
-    corrupted_triples = [get_random_corrupted_triple(x, entities, corrupt=corrupt) for x in X]
-    X = X + corrupted_triples
-
-    # convert uris to strings
-
-    X = get_vectors_fast(X, entity_vec_mapping)
-
-    # stack them
-
-    Y = np.concatenate((np.ones(no_t), np.zeros(no_t))).astype(np.uint8)
-
-    return X, Y
 
 
-def get_1_1_dataset_embedded(graph, entities, corrupt='random', vector_size=VECTOR_SIZE):
-    """
-    graph: numpy array of shape (samples,3*vecsize)
-    """
-
-    if len(graph.shape) == 1:
-        graph = np.expand_dims(graph, 0)
-    # print(graph.shape)
-    no_t = len(graph)
-    corrupted_triples = [get_random_corrupted_triple_embedded(x, entities, corrupt=corrupt, vector_size=vector_size) for
-                         x in graph]
-    X = np.concatenate((graph, corrupted_triples), axis=0)
-
-    Y = np.concatenate((np.ones(no_t), np.zeros(no_t))).astype(np.uint8)
-
-    return X, Y
 
 
-def get_vectors_fast(triples, entity_vec_mapping, vector_size=VECTOR_SIZE):
-    # ~20-30% faster
-    X = np.array(triples)
-    X = entity_vec_mapping(X.flatten()).reshape(len(triples), vector_size * 3)
-
-    return X
 
 
-def get_random_corrupted_triple_embedded(triple, entities, corrupt='object', vector_size=VECTOR_SIZE):
-    """
-    corrupt = one of 'subject', 'object', 'both'
 
-    return corrupted triple with random path
-    """
 
-    s = triple[0:VECTOR_SIZE]
-    p = triple[VECTOR_SIZE:VECTOR_SIZE * 2]
-    o = triple[VECTOR_SIZE * 2:]
-
-    # set up as the same
-    s_corr = s[:]
-    o_corr = o[:]
-
-    if corrupt == 'subject':
-
-        # corrupt only the subject
-        while (s_corr == s).all():
-            s_corr = choose(entities)
-    elif corrupt == 'object':
-        # corrupt only the object
-        while (o_corr == o).all():
-            o_corr = choose(entities)
-    elif corrupt == 'random':
-        # corrupt one or both randomly
-        ch = np.random.randint(3)
-
-        if ch == 0:
-            while (s_corr == s).all():
-                s_corr = choose(entities)
-        if ch == 1:
-            while (o_corr == o).all():
-                o_corr = choose(entities)
-        if ch == 2:
-
-            while (s_corr == s).all() or (o_corr == o).all():
-                s_corr = choose(entities)
-                o_corr = choose(entities)
-    else:
-
-        while (s_corr == s).all() or (o_corr == o).all():
-            s_corr = choose(entities)
-            o_corr = choose(entities)
-
-    return np.concatenate((s_corr, p, o_corr), axis=0)
 
 
 def get_bert_simple_dataset(graph):

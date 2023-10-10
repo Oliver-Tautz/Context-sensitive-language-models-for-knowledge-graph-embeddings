@@ -5,102 +5,13 @@ import torch
 import torchmetrics
 import numpy as np
 
-from utils_data import Dataset11, get_vectors_fast
-from settings import VECTOR_SIZE
+
 from utils import choose
 from utils_graph import get_random_corrupted_triple
 from utils import verbprint
 from profiler import Profiler
 
 
-def fit_1_1(model, graph, word_vec_mapping, batch_size, entities, metrics=None, epochs=50, optimizer=None,
-            lossF=torch.nn.BCEWithLogitsLoss(), graph_eval=None):
-    """
-    metrics: dictionary of {name:torchmetric} to track for training and evaluation.
-    """
-
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-    with torch.no_grad():
-        # move metrics to device
-        metrics = {name: metric.to(device) for (name, metric) in metrics.items()}
-
-        # move model to device
-
-        model = model.to(device)
-
-        if not optimizer:
-            optimizer = torch.optim.Adam(model.parameters())
-
-        history = defaultdict(list)
-        loss_metric = torchmetrics.aggregation.MeanMetric().to(device)
-
-        dataset = Dataset11(graph, word_vec_mapping, entities, 'random')
-        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-
-        if graph_eval:
-            dataset_eval = Dataset11(graph_eval, word_vec_mapping, entities, 'random')
-            dataloader_eval = DataLoader(dataset_eval, batch_size=batch_size, shuffle=False)
-
-    for ep in trange(epochs):
-        # train
-        for X, Y in dataloader:
-            model.train()
-
-            # shape is (bs,2,3*VECTORSIZE) because of dataset_file implementation
-            # so I need to flatten the arrays
-            X = torch.flatten(X, 0, 1)
-            Y = torch.flatten(Y)
-
-            X = X.to(device)
-            Y = Y.to(device).double()
-
-            predictions = model(X).squeeze()
-            loss = lossF(predictions, Y)
-            loss_metric(loss)
-
-            loss.backward()
-            optimizer.step()
-            optimizer.zero_grad()
-
-            for metric in metrics.values():
-                metric(predictions, Y.long())
-
-        for name, metric in metrics.items():
-            history[name].append(metric.compute())
-            metric.reset()
-        history['loss'].append(loss_metric.compute())
-        loss_metric.reset()
-
-        # eval
-        if graph_eval:
-            with torch.no_grad():
-                for X, Y in dataloader_eval:
-                    model.eval()
-
-                    # shape is (bs,2,3*VECTORSIZE) because of dataset_file implementation
-                    # so I need to flatten the arrays
-                    X = torch.flatten(X, 0, 1)
-                    Y = torch.flatten(Y)
-
-                    X = X.to(device)
-                    Y = Y.to(device).double()
-
-                    predictions = model(X).squeeze()
-                    loss = lossF(predictions, Y)
-                    loss_metric(loss)
-
-                    for metric in metrics.values():
-                        metric(predictions, Y.long())
-
-                for name, metric in metrics.items():
-                    history[name + '_val'].append(metric.compute())
-                    metric.reset()
-                history['loss_val'].append(loss_metric.compute())
-                loss_metric.reset()
-                # tensor - > float conversion
-    history = {k: [x.item() for x in v] for (k, v) in history.items()}
-    return model, optimizer, history
 
 
 def train_bert_embeddings_mlm(model, epochs, dataset, dataset_eval, batchsize, optimizer, lossF, device, folder,
@@ -355,7 +266,7 @@ def train_bert_embeddings_lm(model, epochs, dataset, dataset_eval, batchsize, op
 
 
 def train_bert_embeddings_lp(model, epochs, dataset, dataset_eval, batchsize, optimizer, lossF, device, folder,
-                              stop_early_patience=5, stop_early_delta=0.1):
+                              stop_early_patience=5, stop_early_delta=0.1,vector_size=200):
     """
     Train a model on a dataset_file.
 
@@ -381,12 +292,12 @@ def train_bert_embeddings_lp(model, epochs, dataset, dataset_eval, batchsize, op
     profiler = Profiler(['batch', 'device', 'forward', 'loss', 'backward', 'metrics', 'eval'])
 
     classifier = torch.nn.Sequential(
-        torch.nn.Linear(VECTOR_SIZE*3,VECTOR_SIZE),
+        torch.nn.Linear(vector_size*3,vector_size),
         torch.nn.Dropout(0.25),
         torch.nn.ReLU(),
-        torch.nn.Linear(VECTOR_SIZE,int(VECTOR_SIZE/2)),
+        torch.nn.Linear(vector_size,int(vector_size/2)),
         torch.nn.ReLU(),
-        torch.nn.Linear(int(VECTOR_SIZE/2),1),
+        torch.nn.Linear(int(vector_size/2),1),
 
     )
     classifier.train()
