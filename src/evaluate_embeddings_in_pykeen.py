@@ -1,10 +1,12 @@
-from pykeen.triples import TriplesFactory
-from pykeen.pipeline import pipeline
-import torch
-from tqdm import tqdm
 import argparse
 import textwrap
 from pathlib import Path
+
+import torch
+from pykeen.pipeline import pipeline
+from pykeen.triples import TriplesFactory
+from tqdm import tqdm
+
 
 def main(args):
     train_file = args.train_triples#'/home/olli/gits/Better_Knowledge_Graph_Embeddings/codex/data/triples/codex-l/train.txt'

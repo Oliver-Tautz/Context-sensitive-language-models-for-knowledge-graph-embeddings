@@ -1,10 +1,12 @@
-from utils_bert_models import BertKGEmb
-from utils_graph import parse_kg_fast
 import argparse
 import textwrap
 from urllib.parse import urljoin
+
 import torch
 from tqdm import tqdm
+
+from utils_bert_models import BertKGEmb
+from utils_graph import parse_kg_fast
 
 global DEVICE
 DEVICE= torch.device('cuda' if torch.cuda.is_available() else 'cpu' )

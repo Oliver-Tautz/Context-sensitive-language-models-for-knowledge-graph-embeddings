@@ -1,18 +1,19 @@
+import json
+import zipfile
+from pathlib import Path
+from random import randint
+from urllib.parse import urlparse
+
+import gdown
+import math
 import numpy as np
 import torch
-from transformers import PreTrainedTokenizerFast, AutoModel
-from pathlib import Path
-from utils import batch, merge_lists, run_str
-from utils_graph import parse_kg,parse_kg_fast
-from random import randint
 from tqdm import tqdm, trange
-import json
-from collections import defaultdict
-import urllib.request
-import gdown
-import zipfile
-from urllib.parse import urlparse
-import math
+from transformers import PreTrainedTokenizerFast, AutoModel
+
+from utils import batch, merge_lists
+from utils_graph import parse_kg, parse_kg_fast
+
 
 class BertKGEmb():
     def __init__(self, path, datapath=None, depth=3, use_best_eval=False, device=torch.device('cpu'), mode=None):
@@ -42,9 +43,7 @@ class BertKGEmb():
 
         # save base url
         parsing_result = urlparse(list(self.tz.vocab.keys())[1])
-        self.entity_base_url =f'{parsing_result.scheme}://{parsing_result.netloc}'
-
-
+        self.entity_base_url = f'{parsing_result.scheme}://{parsing_result.netloc}'
 
         self.pad_token = self.special_tokens_map['pad_token']
         self.pad_token_id = self.tz.convert_tokens_to_ids(self.special_tokens_map['pad_token'])
@@ -96,9 +95,6 @@ class BertKGEmb():
 
             self.relation_walks = dict(zip(predicates, walks))
 
-
-
-
     def get_embeddings(self, entities_or_relations, mode='single', batchsize=100, relations=False):
         """
         modes:
@@ -120,18 +116,18 @@ class BertKGEmb():
             #    if lens[i] < maxlen:
             #        input[i] = input[i]+' '.join([self.pad_token]*(maxlen-lens[i]).item())
             with torch.no_grad():
-                #print(inp)
+                # print(inp)
                 inp = self.tz(list(inp), padding='longest', return_tensors='pt')
                 ids = inp['input_ids']
                 masks = inp['attention_mask']
 
-                l = math.floor(len(ids)/batchsize)
+                l = math.floor(len(ids) / batchsize)
                 ids = batch(ids.to(self.device), batchsize)
                 masks = batch(masks.to(self.device), batchsize)
 
                 batches = []
-                for i, m in tqdm(zip(ids, masks),total=l):
-                    #print(i.shape,m.shape)
+                for i, m in tqdm(zip(ids, masks), total=l):
+                    # print(i.shape,m.shape)
                     batches.append(self.model(input_ids=i, attention_mask=m)['last_hidden_state'][:, column])
                 embeddings = torch.cat(batches)
 
@@ -144,13 +140,15 @@ class BertKGEmb():
 
         if mode == 'walks':
             if not relations:
-                entities_or_relations = [self.entity_walks[e] if e in self.entity_walks else e for e in entities_or_relations]
+                entities_or_relations = [self.entity_walks[e] if e in self.entity_walks else e for e in
+                                         entities_or_relations]
                 # use column 1, because first path after CLS is used
                 embeddings = bert_process(entities_or_relations, 1)
                 return embeddings
 
             else:
-                entities_or_relations = [self.relation_walks[r] if r in self.relation_walks else r for r in entities_or_relations]
+                entities_or_relations = [self.relation_walks[r] if r in self.relation_walks else r for r in
+                                         entities_or_relations]
                 # use columne 2, because first relation is used
                 embeddings = bert_process(entities_or_relations, 2)
                 return embeddings

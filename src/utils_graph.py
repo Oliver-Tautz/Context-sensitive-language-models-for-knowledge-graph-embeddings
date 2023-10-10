@@ -1,16 +1,16 @@
-import numpy as np
-import gc
 import itertools
-
-from torch.utils.data import DataLoader
-from tqdm import tqdm
 import urllib
-from utils import choose, PerfTimer
-from sklearn.utils.extmath import cartesian
+
+import lightrdf
+import numpy as np
 import torch
 from rdflib import Graph
-import lightrdf
+from tqdm import tqdm
+
+from utils import choose
 from utils import iter_exception_wrapper
+
+
 def get_entities(graphs):
     # get subjects and objects
     entities = []

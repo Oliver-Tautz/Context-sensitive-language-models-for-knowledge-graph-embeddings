@@ -1,10 +1,12 @@
-import torchmetrics
 import torch
+import torchmetrics
 from torch import nn
 from torch.utils.data import DataLoader
-from settings import VECTOR_SIZE, BERT_SIMPLE_NAME,BERT_EPOCHS, CLASSIFIER_DROPOUT
 from transformers import PreTrainedTokenizerFast, AutoModel, BertForTokenClassification
+
+from settings import VECTOR_SIZE, BERT_EPOCHS, CLASSIFIER_DROPOUT
 from utils_train import get_bert_embeddings
+
 
 class ClassifierSimple(torch.nn.Module):
     def __init__(self, input_dim=3*VECTOR_SIZE, hidden_size=64,dropout=CLASSIFIER_DROPOUT):

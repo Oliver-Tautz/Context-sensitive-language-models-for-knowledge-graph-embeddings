@@ -1,13 +1,14 @@
-from utils_graph import parse_rdflib_to_torch
+import gc
+
+import torch
+from sklearn.utils.extmath import cartesian
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from utils import  PerfTimer
-from sklearn.utils.extmath import cartesian
-import torch
-
 from settings import VECTOR_SIZE
-import gc
+from utils import PerfTimer
+from utils_graph import parse_rdflib_to_torch
+
 
 def compute_rank(scores, ix, mask=None):
     if mask == None:

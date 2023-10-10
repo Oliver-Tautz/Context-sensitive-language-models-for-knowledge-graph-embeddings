@@ -1,18 +1,16 @@
-from pathlib import Path
-from utils import choose
-from utils_graph import get_random_corrupted_triple
-import torch
-from tokenizers.models import WordLevel
-from tokenizers import Tokenizer
-from transformers import BertTokenizer, EncoderDecoderModel, BertForTokenClassification
-from tokenizers.pre_tokenizers import WhitespaceSplit
-from tokenizers.trainers import WordLevelTrainer
-from tokenizers.processors import BertProcessing
-from transformers import BertConfig, BertModel, AutoModel
-from rdflib import Graph
-import numpy as np
 import os
+from pathlib import Path
 
+import numpy as np
+import torch
+from tokenizers import Tokenizer
+from tokenizers.models import WordLevel
+from tokenizers.pre_tokenizers import WhitespaceSplit
+from tokenizers.processors import BertProcessing
+from tokenizers.trainers import WordLevelTrainer
+from transformers import BertTokenizer
+
+from utils_graph import get_random_corrupted_triple
 
 
 def random_mask(token, mask_token, vocab_size, mask_chance=0.33, mask_token_chance=0.9):

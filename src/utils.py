@@ -1,9 +1,9 @@
-import subprocess
 import pickle
-from time import perf_counter
+import subprocess
 from collections import defaultdict
-import numpy as np
+from time import perf_counter
 
+import numpy as np
 
 VERBOSE=1
 

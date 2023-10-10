@@ -1,17 +1,13 @@
-from tqdm import trange, tqdm
 from collections import defaultdict
-from torch.utils.data import DataLoader
+
+import numpy as np
 import torch
 import torchmetrics
-import numpy as np
+from torch.utils.data import DataLoader
+from tqdm import trange
 
-
-from utils import choose
-from utils_graph import get_random_corrupted_triple
-from utils import verbprint
 from profiler import Profiler
-
-
+from utils import verbprint
 
 
 def train_bert_embeddings_mlm(model, epochs, dataset, dataset_eval, batchsize, optimizer, lossF, device, folder,
