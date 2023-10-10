@@ -1,3 +1,11 @@
-# Better_Knowledge_Graph_Embeddings
+# Context-Sensitive Language Models For Knowledge Graph Embeddings
 
-Repository used for my master thesis ...
+Train a BERT model to generate Knowledge Graph embeddings. 
+
+## Install
+
+## Train BERT
+
+## Generate Embeddings
+
+## Evaluate with [pykeen](https://github.com/pykeen/pykeen)
