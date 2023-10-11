@@ -10,7 +10,7 @@ To install all dependencies with pip, run
 python -m pip install -r requirements.txt
 ```
 
-
+tested with python 3.11.5.
 
 ### Train BERT
 
